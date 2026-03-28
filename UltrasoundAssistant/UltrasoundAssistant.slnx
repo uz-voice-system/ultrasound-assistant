@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/Элементы решения/">
+    <File Path="docker-compose.yml" />
+  </Folder>
+  <Project Path="src/UltrasoundAssistant.AggregationService/UltrasoundAssistant.AggregationService.csproj" Id="bfd443b0-02a8-4b5e-90f2-c5639a75352e" />
+  <Project Path="src/UltrasoundAssistant.ApiGateway/UltrasoundAssistant.ApiGateway.csproj" Id="2c5e45a6-7722-497e-bd74-b4f071364edd" />
+  <Project Path="src/UltrasoundAssistant.AuditService/UltrasoundAssistant.AuditService.csproj" Id="9f9d8a68-7e66-495d-b93e-99c1aae6335b" />
+  <Project Path="src/UltrasoundAssistant.Contracts/UltrasoundAssistant.Contracts.csproj" Id="38cd3027-612b-4136-b637-f764973cd2d6" />
+  <Project Path="src/UltrasoundAssistant.ProjectionService/UltrasoundAssistant.ProjectionService.csproj" Id="80d23159-cb61-4648-a904-794060bd108d" />
+  <Project Path="src/UltrasoundAssistant.ReportGenerator/UltrasoundAssistant.ReportGenerator.csproj" Id="66f315fa-4561-4477-95dc-0d09abdf0526" />
+</Solution>

@@ -1,0 +1,6 @@
+@UltrasoundAssistant.ApiGateway_HostAddress = http://localhost:5278
+
+GET {{UltrasoundAssistant.ApiGateway_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

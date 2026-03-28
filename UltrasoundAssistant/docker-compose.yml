@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  
+  # Брокер сообщений
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: us-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+
+  # БД Event Store (для Aggregation Service)
+  eventstore.db:
+    image: postgres:15
+    container_name: us-eventstore
+    environment:
+      POSTGRES_DB: event_store
+      POSTGRES_USER: event_user
+      POSTGRES_PASSWORD: event_pass
+    ports:
+      - "5433:5432"
+    volumes:
+      - eventstore_data:/var/lib/postgresql/data
+
+  # БД Read DB (для Projection Service)
+  read.db:
+    image: postgres:15
+    container_name: us-readdb
+    environment:
+      POSTGRES_DB: read_db
+      POSTGRES_USER: read_user
+      POSTGRES_PASSWORD: read_pass
+    ports:
+      - "5434:5432"
+    volumes:
+      - readdb_data:/var/lib/postgresql/data
+
+  # БД Audit DB (для Audit Service)
+  audit.db:
+    image: postgres:15
+    container_name: us-auditdb
+    environment:
+      POSTGRES_DB: audit_db
+      POSTGRES_USER: audit_user
+      POSTGRES_PASSWORD: audit_pass
+    ports:
+      - "5435:5432"
+    volumes:
+      - auditdb_data:/var/lib/postgresql/data
+
+  # --- Сервисы (на будущее) ---
+  # api-gateway:
+  #   image: ultrasound-api-gateway
+  #   build:
+  #     context: ./UltrasoundAssistant.ApiGateway
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - "5000:8080"
+  #   depends_on:
+  #     - rabbitmq
+
+volumes:
+  rabbitmq_data:
+  eventstore_data:
+  readdb_data:
+  auditdb_data:

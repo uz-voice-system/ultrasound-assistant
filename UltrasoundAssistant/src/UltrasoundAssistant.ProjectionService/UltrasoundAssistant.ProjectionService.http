@@ -1,0 +1,6 @@
+@UltrasoundAssistant.ProjectionService_HostAddress = http://localhost:5185
+
+GET {{UltrasoundAssistant.ProjectionService_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
