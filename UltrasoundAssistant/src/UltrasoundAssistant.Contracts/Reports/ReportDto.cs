@@ -1,4 +1,4 @@
-﻿using UltrasoundAssistant.Contracts.Enums;
+using UltrasoundAssistant.Contracts.Enums;
 
 namespace UltrasoundAssistant.Contracts.Reports
 {
@@ -51,5 +51,10 @@ namespace UltrasoundAssistant.Contracts.Reports
         /// Дата последнего обновления отчёта.
         /// </summary>
         public DateTime UpdatedAt { get; set; }
+
+        /// <summary>
+        /// Версия агрегата (для команд обновления полей, завершения, удаления черновика).
+        /// </summary>
+        public int Version { get; set; }
     }
 }

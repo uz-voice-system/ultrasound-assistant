@@ -1,4 +1,4 @@
-﻿
+
 
 namespace UltrasoundAssistant.Contracts.Reports
 {
@@ -8,9 +8,19 @@ namespace UltrasoundAssistant.Contracts.Reports
     public class CreateReportRequest
     {
         /// <summary>
+        /// Идентификатор отчёта (если не задан — генерируется на шлюзе).
+        /// </summary>
+        public Guid? ReportId { get; set; }
+
+        /// <summary>
         /// Идентификатор пациента.
         /// </summary>
         public Guid PatientId { get; set; }
+
+        /// <summary>
+        /// Идентификатор врача (пользователя).
+        /// </summary>
+        public Guid DoctorId { get; set; }
 
         /// <summary>
         /// Идентификатор шаблона.

@@ -1,4 +1,4 @@
-﻿
+
 
 namespace UltrasoundAssistant.Contracts.Templates
 {
@@ -8,9 +8,9 @@ namespace UltrasoundAssistant.Contracts.Templates
     public class TemplateKeywordDto
     {
         /// <summary>
-        /// Идентификатор ключевого слова.
+        /// Идентификатор ключевого слова (в Read DB — surrogate key).
         /// </summary>
-        public Guid Id { get; set; }
+        public long Id { get; set; }
 
         /// <summary>
         /// Фраза, которую должен произнести врач.

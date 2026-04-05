@@ -1,4 +1,4 @@
-﻿
+
 
 namespace UltrasoundAssistant.Contracts.Templates
 {
@@ -21,5 +21,10 @@ namespace UltrasoundAssistant.Contracts.Templates
         /// Ключевые слова шаблона.
         /// </summary>
         public List<TemplateKeywordDto> Keywords { get; set; } = [];
+
+        /// <summary>
+        /// Версия агрегата (для команд обновления и удаления).
+        /// </summary>
+        public int Version { get; set; }
     }
 }

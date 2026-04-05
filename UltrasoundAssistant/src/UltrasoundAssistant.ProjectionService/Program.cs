@@ -1,9 +1,17 @@
+using Microsoft.EntityFrameworkCore;
+using UltrasoundAssistant.ProjectionService.Persistence;
+using UltrasoundAssistant.ProjectionService.Services;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+builder.Services.AddDbContext<ReadDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("ReadDb")));
+
+builder.Services.AddScoped<DomainEventProcessor>();
+builder.Services.AddHostedService<MigrationHostedService>();
+builder.Services.AddHostedService<RabbitMqProjectionConsumer>();
 
 builder.Services.AddControllers();
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
@@ -13,8 +21,6 @@ if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
-
-app.UseHttpsRedirection();
 
 app.UseAuthorization();
 

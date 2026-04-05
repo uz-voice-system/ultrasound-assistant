@@ -1,4 +1,5 @@
-version: '3.8'
+networks:
+  us-backend:
 
 services:
   
@@ -14,6 +15,8 @@ services:
       RABBITMQ_DEFAULT_PASS: admin
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - us-backend
 
   # БД Event Store (для Aggregation Service)
   eventstore.db:
@@ -27,6 +30,8 @@ services:
       - "5433:5432"
     volumes:
       - eventstore_data:/var/lib/postgresql/data
+    networks:
+      - us-backend
 
   # БД Read DB (для Projection Service)
   read.db:
@@ -40,6 +45,8 @@ services:
       - "5434:5432"
     volumes:
       - readdb_data:/var/lib/postgresql/data
+    networks:
+      - us-backend
 
   # БД Audit DB (для Audit Service)
   audit.db:
@@ -53,17 +60,112 @@ services:
       - "5435:5432"
     volumes:
       - auditdb_data:/var/lib/postgresql/data
+    networks:
+      - us-backend
 
-  # --- Сервисы (на будущее) ---
-  # api-gateway:
-  #   image: ultrasound-api-gateway
-  #   build:
-  #     context: ./UltrasoundAssistant.ApiGateway
-  #     dockerfile: Dockerfile
-  #   ports:
-  #     - "5000:8080"
-  #   depends_on:
-  #     - rabbitmq
+  # API Gateway
+  api-gateway:
+    container_name: us-api-gateway
+    build:
+      context: .
+      dockerfile: src/UltrasoundAssistant.ApiGateway/Dockerfile
+    ports:
+      - "5000:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      Services__AggregationBaseUrl: http://aggregation-service:8080
+      Services__ProjectionBaseUrl: http://projection-service:8080
+    depends_on:
+      - rabbitmq
+      - aggregation-service
+      - projection-service
+    networks:
+      - us-backend
+
+  # Aggregation Service (worker + event store)
+  aggregation-service:
+    container_name: us-aggregation-service
+    build:
+      context: .
+      dockerfile: src/UltrasoundAssistant.AggregationService/Dockerfile
+    ports:
+      - "5002:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      ConnectionStrings__EventStore: Host=eventstore.db;Port=5432;Database=event_store;Username=event_user;Password=event_pass
+      RabbitMQ__Host: rabbitmq
+      RabbitMQ__Port: 5672
+      RabbitMQ__Username: admin
+      RabbitMQ__Password: admin
+    depends_on:
+      rabbitmq:
+        condition: service_started
+      eventstore.db:
+        condition: service_started
+    networks:
+      - us-backend
+
+# Projection Service (HTTP + проекции в read.db)
+  projection-service:
+    container_name: us-projection-service
+    build:
+      context: .
+      dockerfile: src/UltrasoundAssistant.ProjectionService/Dockerfile
+    ports:
+      - "5001:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      ConnectionStrings__ReadDb: Host=read.db;Port=5432;Database=read_db;Username=read_user;Password=read_pass
+      RabbitMq__Host: rabbitmq
+      RabbitMq__Port: 5672
+      RabbitMq__Username: admin
+      RabbitMq__Password: admin
+    depends_on:
+      rabbitmq:
+        condition: service_started
+      read.db:
+        condition: service_started
+    networks:
+      - us-backend
+
+  # Audit Service (worker + audit.db)
+  audit-service:
+    container_name: us-audit-service
+    build:
+      context: .
+      dockerfile: src/UltrasoundAssistant.AuditService/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      ConnectionStrings__AuditDb: Host=audit.db;Port=5432;Database=audit_db;Username=audit_user;Password=audit_pass
+      RabbitMQ__Host: rabbitmq
+      RabbitMQ__Port: 5672
+      RabbitMQ__Username: admin
+      RabbitMQ__Password: admin
+    depends_on:
+      rabbitmq:
+        condition: service_started
+      audit.db:
+        condition: service_started
+    networks:
+      - us-backend
+
+  # Report Generator (worker)
+  report-generator:
+    container_name: us-report-generator
+    build:
+      context: .
+      dockerfile: src/UltrasoundAssistant.ReportGenerator/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      RabbitMQ__Host: rabbitmq
+      RabbitMQ__Port: 5672
+      RabbitMQ__Username: admin
+      RabbitMQ__Password: admin
+    depends_on:
+      rabbitmq:
+        condition: service_started
+    networks:
+      - us-backend
 
 volumes:
   rabbitmq_data:

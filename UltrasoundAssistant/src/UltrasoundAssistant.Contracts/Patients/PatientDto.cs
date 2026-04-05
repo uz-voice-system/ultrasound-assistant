@@ -1,4 +1,4 @@
-﻿
+
 
 namespace UltrasoundAssistant.Contracts.Patients
 {
@@ -31,5 +31,10 @@ namespace UltrasoundAssistant.Contracts.Patients
         /// Пол пациента.
         /// </summary>
         public string? Gender { get; set; }
+
+        /// <summary>
+        /// Версия агрегата (для optimistic concurrency при обновлении/деактивации).
+        /// </summary>
+        public int Version { get; set; }
     }
 }

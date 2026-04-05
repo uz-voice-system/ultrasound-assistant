@@ -1,4 +1,4 @@
-﻿using UltrasoundAssistant.Contracts.Events.Abstraction;
+using UltrasoundAssistant.Contracts.Events.Abstraction;
 
 namespace UltrasoundAssistant.Contracts.Events.PatientEvent
 {
@@ -27,6 +27,11 @@ namespace UltrasoundAssistant.Contracts.Events.PatientEvent
         /// Дата рождения пациента.
         /// </summary>
         public DateTime BirthDate { get; set; }
+
+        /// <summary>
+        /// Пол пациента.
+        /// </summary>
+        public string? Gender { get; set; }
 
         /// <summary>
         /// Версия агрегата (для event sourcing / concurrency).

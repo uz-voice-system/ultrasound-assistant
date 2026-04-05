@@ -1,4 +1,4 @@
-﻿
+
 
 namespace UltrasoundAssistant.Contracts.Reports
 {
@@ -8,6 +8,11 @@ namespace UltrasoundAssistant.Contracts.Reports
     public class UpdateReportFieldRequest
     {
         /// <summary>
+        /// Ожидаемая версия агрегата отчёта (optimistic concurrency).
+        /// </summary>
+        public int ExpectedVersion { get; set; }
+
+        /// <summary>
         /// Имя поля.
         /// </summary>
         public string FieldName { get; set; } = null!;
@@ -16,5 +21,10 @@ namespace UltrasoundAssistant.Contracts.Reports
         /// Новое значение поля.
         /// </summary>
         public string Value { get; set; } = null!;
+
+        /// <summary>
+        /// Уверенность (0–1), по умолчанию 1.
+        /// </summary>
+        public double Confidence { get; set; } = 1.0;
     }
 }

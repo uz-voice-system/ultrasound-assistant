@@ -1,4 +1,4 @@
-﻿using UltrasoundAssistant.Contracts.Enums;
+using UltrasoundAssistant.Contracts.Enums;
 
 namespace UltrasoundAssistant.Contracts.Auth
 {
@@ -21,5 +21,15 @@ namespace UltrasoundAssistant.Contracts.Auth
         /// Роль пользователя в системе.
         /// </summary>
         public UserRole Role { get; set; }
+
+        /// <summary>
+        /// Активен ли пользователь (soft delete = false).
+        /// </summary>
+        public bool IsActive { get; set; }
+
+        /// <summary>
+        /// Версия агрегата для optimistic concurrency.
+        /// </summary>
+        public int Version { get; set; }
     }
 }

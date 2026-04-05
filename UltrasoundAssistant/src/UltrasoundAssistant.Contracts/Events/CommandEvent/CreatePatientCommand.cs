@@ -1,4 +1,4 @@
-﻿
+
 
 namespace UltrasoundAssistant.Contracts.Events.CommandEvent
 {
@@ -21,5 +21,10 @@ namespace UltrasoundAssistant.Contracts.Events.CommandEvent
         /// Дата рождения пациента.
         /// </summary>
         public DateTime BirthDate { get; set; }
+
+        /// <summary>
+        /// Пол пациента (опционально).
+        /// </summary>
+        public string? Gender { get; set; }
     }
 }
