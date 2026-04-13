@@ -32,6 +32,11 @@ services:
       - eventstore_data:/var/lib/postgresql/data
     networks:
       - us-backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U event_user -d event_store"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   # БД Read DB (для Projection Service)
   read.db:
@@ -47,6 +52,11 @@ services:
       - readdb_data:/var/lib/postgresql/data
     networks:
       - us-backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U read_user -d read_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   # БД Audit DB (для Audit Service)
   audit.db:
@@ -92,11 +102,11 @@ services:
       - "5002:8080"
     environment:
       ASPNETCORE_ENVIRONMENT: Docker
-      ConnectionStrings__EventStore: Host=eventstore.db;Port=5432;Database=event_store;Username=event_user;Password=event_pass
-      RabbitMQ__Host: rabbitmq
-      RabbitMQ__Port: 5672
-      RabbitMQ__Username: admin
-      RabbitMQ__Password: admin
+      ConnectionStrings__AggregationDb: Host=eventstore.db;Port=5432;Database=event_store;Username=event_user;Password=event_pass
+      RabbitMq__Host: rabbitmq
+      RabbitMq__Port: 5672
+      RabbitMq__Username: admin
+      RabbitMq__Password: admin
     depends_on:
       rabbitmq:
         condition: service_started

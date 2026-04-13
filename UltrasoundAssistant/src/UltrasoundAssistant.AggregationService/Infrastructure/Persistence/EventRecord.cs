@@ -1,4 +1,4 @@
-namespace UltrasoundAssistant.AggregationService.Infrastructure;
+namespace UltrasoundAssistant.AggregationService.Infrastructure.Persistence;
 
 public sealed class EventRecord
 {

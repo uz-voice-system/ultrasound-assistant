@@ -1,28 +1,32 @@
 using Microsoft.EntityFrameworkCore;
-using UltrasoundAssistant.AggregationService.Infrastructure;
-using UltrasoundAssistant.AggregationService.Persistence;
-using UltrasoundAssistant.AggregationService.Services;
+using UltrasoundAssistant.AggregationService.Extensions;
+using UltrasoundAssistant.AggregationService.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddDbContext<EventStoreDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("EventStore")));
-
 builder.Services.AddControllers();
-builder.Services.AddOpenApi();
-builder.Services.AddScoped<IEventStore, EfEventStore>();
-builder.Services.AddScoped<CommandService>();
-builder.Services.AddHostedService<MigrationHostedService>();
-builder.Services.AddScoped<IMessageBrokerPublisher, RabbitMqPublisher>();
-builder.Services.AddHostedService<OutboxDispatcher>();
+
+builder.Services.AddAggregationInfrastructure(builder.Configuration);
+builder.Services.AddAggregationApplication();
+
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
+using (var scope = app.Services.CreateScope())
 {
-    app.MapOpenApi();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
+    var dbContext = scope.ServiceProvider.GetRequiredService<AggregationDbContext>();
+    logger.LogInformation("Starting database migration...");
+    dbContext.Database.Migrate();
+    logger.LogInformation("Database migration completed.");
 }
 
-app.UseMiddleware<ExceptionHandlingMiddleware>();
+app.UseSwagger();
+app.UseSwaggerUI();
+
 app.MapControllers();
+
 app.Run();

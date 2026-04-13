@@ -1,4 +1,5 @@
-using UltrasoundAssistant.AggregationService.Infrastructure;
+using System.Text.Json;
+using UltrasoundAssistant.AggregationService.Infrastructure.Persistence;
 using UltrasoundAssistant.Contracts.Events.TemplateEvent;
 
 namespace UltrasoundAssistant.AggregationService.Domain;
@@ -9,27 +10,26 @@ public sealed class TemplateAggregate
     public bool Exists { get; private set; }
     public bool IsDeleted { get; private set; }
     public int Version { get; private set; }
-    public Dictionary<string, string> Keywords { get; } = new(StringComparer.OrdinalIgnoreCase);
 
-    public void LoadFrom(IEnumerable<EventRecordEnvelope> events)
-    {
-        foreach (var item in events)
-        {
-            Apply(item.EventType, item.Payload, item.Version);
-        }
-    }
+    public string Name { get; private set; } = string.Empty;
+
+    // phrase -> fieldName
+    public Dictionary<string, string> Keywords { get; private set; } =
+        new(StringComparer.OrdinalIgnoreCase);
 
     public TemplateCreatedEvent Create(Guid templateId, string name, Dictionary<string, string> keywords)
     {
-        if (Exists)
-        {
-            throw new DomainException("Template already exists");
-        }
+        if (templateId == Guid.Empty)
+            throw new DomainException("Template id is required");
 
-        if (templateId == Guid.Empty || string.IsNullOrWhiteSpace(name))
-        {
-            throw new DomainException("Invalid template data");
-        }
+        if (Exists)
+            throw new DomainException("Template already exists");
+
+        if (string.IsNullOrWhiteSpace(name))
+            throw new DomainException("Template name is required");
+
+        if (keywords is null || keywords.Count == 0)
+            throw new DomainException("Template keywords are required");
 
         ValidateKeywords(keywords);
 
@@ -37,7 +37,34 @@ public sealed class TemplateAggregate
         {
             TemplateId = templateId,
             Name = name.Trim(),
-            Keywords = NormalizeKeywords(keywords),
+            Keywords = new Dictionary<string, string>(keywords, StringComparer.OrdinalIgnoreCase),
+            Version = Version + 1
+        };
+    }
+
+    public TemplateUpdatedEvent Update(string? name, Dictionary<string, string>? keywords)
+    {
+        if (!Exists || IsDeleted)
+            throw new DomainException("Template not found");
+
+        var nextName = string.IsNullOrWhiteSpace(name) ? Name : name.Trim();
+        var nextKeywords = keywords is null || keywords.Count == 0
+            ? new Dictionary<string, string>(Keywords, StringComparer.OrdinalIgnoreCase)
+            : new Dictionary<string, string>(keywords, StringComparer.OrdinalIgnoreCase);
+
+        if (string.IsNullOrWhiteSpace(nextName))
+            throw new DomainException("Template name is required");
+
+        if (nextKeywords.Count == 0)
+            throw new DomainException("Template keywords are required");
+
+        ValidateKeywords(nextKeywords);
+
+        return new TemplateUpdatedEvent
+        {
+            TemplateId = Id,
+            Name = nextName,
+            Keywords = nextKeywords,
             Version = Version + 1
         };
     }
@@ -45,9 +72,7 @@ public sealed class TemplateAggregate
     public TemplateDeletedEvent Delete()
     {
         if (!Exists || IsDeleted)
-        {
-            throw new DomainException("Template not found");
-        }
+            throw new DomainException("Template not found or already deleted");
 
         return new TemplateDeletedEvent
         {
@@ -56,87 +81,60 @@ public sealed class TemplateAggregate
         };
     }
 
-    public TemplateUpdatedEvent Update(string? name, Dictionary<string, string>? keywords)
+    public void LoadFrom(IEnumerable<EventRecord> history)
     {
-        if (!Exists || IsDeleted)
+        foreach (var item in history.OrderBy(x => x.Version))
         {
-            throw new DomainException("Template not found");
+            Apply(item);
         }
-
-        if (string.IsNullOrWhiteSpace(name) && (keywords is null || keywords.Count == 0))
-        {
-            throw new DomainException("At least one field should be updated");
-        }
-
-        if (keywords is not null)
-        {
-            ValidateKeywords(keywords);
-        }
-
-        return new TemplateUpdatedEvent
-        {
-            TemplateId = Id,
-            Name = string.IsNullOrWhiteSpace(name) ? null : name.Trim(),
-            Keywords = keywords is null ? null : NormalizeKeywords(keywords),
-            Version = Version + 1
-        };
     }
 
-    private void Apply(string eventType, string payload, int version)
+    private void Apply(EventRecord record)
     {
-        switch (eventType)
+        switch (record.EventType)
         {
             case nameof(TemplateCreatedEvent):
-                var created = System.Text.Json.JsonSerializer.Deserialize<TemplateCreatedEvent>(payload)
-                    ?? throw new DomainException("Failed to deserialize TemplateCreatedEvent");
-                Id = created.TemplateId;
-                Exists = true;
-                Keywords.Clear();
-                foreach (var kv in created.Keywords)
                 {
-                    Keywords[kv.Key] = kv.Value;
+                    var e = JsonSerializer.Deserialize<TemplateCreatedEvent>(record.Payload)!;
+                    Id = e.TemplateId;
+                    Name = e.Name;
+                    Keywords = new Dictionary<string, string>(e.Keywords, StringComparer.OrdinalIgnoreCase);
+                    Exists = true;
+                    IsDeleted = false;
+                    Version = e.Version;
+                    break;
                 }
-                IsDeleted = false;
-                Version = version;
-                break;
+
             case nameof(TemplateUpdatedEvent):
-                var updated = System.Text.Json.JsonSerializer.Deserialize<TemplateUpdatedEvent>(payload)
-                    ?? throw new DomainException("Failed to deserialize TemplateUpdatedEvent");
-                if (updated.Keywords is not null)
                 {
-                    Keywords.Clear();
-                    foreach (var kv in updated.Keywords)
-                    {
-                        Keywords[kv.Key] = kv.Value;
-                    }
+                    var e = JsonSerializer.Deserialize<TemplateUpdatedEvent>(record.Payload)!;
+                    Name = string.IsNullOrWhiteSpace(e.Name) ? Name : e.Name;
+                    Keywords = e.Keywords is null || e.Keywords.Count == 0
+                        ? Keywords
+                        : new Dictionary<string, string>(e.Keywords, StringComparer.OrdinalIgnoreCase);
+                    Version = e.Version;
+                    break;
                 }
-                Version = version;
-                break;
+
             case nameof(TemplateDeletedEvent):
-                IsDeleted = true;
-                Version = version;
-                break;
+                {
+                    var e = JsonSerializer.Deserialize<TemplateDeletedEvent>(record.Payload)!;
+                    IsDeleted = true;
+                    Version = e.Version;
+                    break;
+                }
         }
     }
 
     private static void ValidateKeywords(Dictionary<string, string> keywords)
     {
-        if (keywords.Count == 0)
+        foreach (var pair in keywords)
         {
-            throw new DomainException("Template keywords cannot be empty");
-        }
+            if (string.IsNullOrWhiteSpace(pair.Key))
+                throw new DomainException("Keyword phrase cannot be empty");
 
-        if (keywords.Any(x => string.IsNullOrWhiteSpace(x.Key) || string.IsNullOrWhiteSpace(x.Value)))
-        {
-            throw new DomainException("Template keywords should contain non-empty keys and values");
+            if (string.IsNullOrWhiteSpace(pair.Value))
+                throw new DomainException("Keyword target field cannot be empty");
         }
-    }
-
-    private static Dictionary<string, string> NormalizeKeywords(Dictionary<string, string> source)
-    {
-        return source.ToDictionary(
-            k => k.Key.Trim(),
-            v => v.Value.Trim(),
-            StringComparer.OrdinalIgnoreCase);
     }
 }

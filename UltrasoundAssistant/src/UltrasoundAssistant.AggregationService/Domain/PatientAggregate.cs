@@ -1,4 +1,5 @@
-using UltrasoundAssistant.AggregationService.Infrastructure;
+using System.Text.Json;
+using UltrasoundAssistant.AggregationService.Infrastructure.Persistence;
 using UltrasoundAssistant.Contracts.Events.PatientEvent;
 
 namespace UltrasoundAssistant.AggregationService.Domain;
@@ -7,42 +8,29 @@ public sealed class PatientAggregate
 {
     public Guid Id { get; private set; }
     public bool Exists { get; private set; }
-    public bool IsActive { get; private set; } = true;
+    public bool IsActive { get; private set; }
     public int Version { get; private set; }
+
     public string FullName { get; private set; } = string.Empty;
     public DateTime BirthDate { get; private set; }
     public string? Gender { get; private set; }
 
-    public void LoadFrom(IEnumerable<EventRecordEnvelope> events)
+    public PatientCreatedEvent Create(Guid id, string fullName, DateTime birthDate, string? gender)
     {
-        foreach (var item in events)
-        {
-            Apply(item.EventType, item.Payload, item.Version);
-        }
-    }
+        if (id == Guid.Empty)
+            throw new DomainException("Patient id is required");
 
-    public PatientCreatedEvent Create(Guid id, string fullName, DateTime birthDateUtc, string? gender)
-    {
         if (Exists)
-        {
             throw new DomainException("Patient already exists");
-        }
 
-        if (id == Guid.Empty || string.IsNullOrWhiteSpace(fullName) || birthDateUtc == default)
-        {
-            throw new DomainException("Invalid patient data");
-        }
-
-        if (birthDateUtc.Date > DateTime.UtcNow.Date)
-        {
-            throw new DomainException("Birth date cannot be in the future");
-        }
+        if (string.IsNullOrWhiteSpace(fullName))
+            throw new DomainException("Patient full name is required");
 
         return new PatientCreatedEvent
         {
             Id = id,
             FullName = fullName.Trim(),
-            BirthDate = birthDateUtc,
+            BirthDate = birthDate,
             Gender = string.IsNullOrWhiteSpace(gender) ? null : gender.Trim(),
             Version = Version + 1
         };
@@ -51,50 +39,32 @@ public sealed class PatientAggregate
     public PatientUpdatedEvent Update(string? fullName, DateTime? birthDate, string? gender)
     {
         if (!Exists || !IsActive)
-        {
             throw new DomainException("Patient not found or inactive");
-        }
 
-        if (fullName is null && birthDate is null && gender is null)
-        {
-            throw new DomainException("At least one field must be provided");
-        }
+        var nextFullName = string.IsNullOrWhiteSpace(fullName) ? FullName : fullName.Trim();
+        var nextBirthDate = birthDate ?? BirthDate;
+        var nextGender = gender is null ? Gender : gender.Trim();
 
-        var newName = fullName is null ? FullName : fullName.Trim();
-        var newBirth = birthDate ?? BirthDate;
-        var newGender = gender is null ? Gender : (string.IsNullOrWhiteSpace(gender) ? null : gender.Trim());
-
-        if (string.IsNullOrWhiteSpace(newName))
-        {
-            throw new DomainException("Full name is required");
-        }
-
-        if (newBirth == default || newBirth.Date > DateTime.UtcNow.Date)
-        {
-            throw new DomainException("Invalid birth date");
-        }
+        if (string.IsNullOrWhiteSpace(nextFullName))
+            throw new DomainException("Patient full name is required");
 
         return new PatientUpdatedEvent
         {
             PatientId = Id,
-            FullName = newName,
-            BirthDate = newBirth,
-            Gender = newGender,
+            FullName = nextFullName,
+            BirthDate = nextBirthDate,
+            Gender = nextGender,
             Version = Version + 1
         };
     }
 
     public PatientDeactivatedEvent Deactivate(Guid patientId, string? reason)
     {
-        if (!Exists || patientId != Id)
-        {
-            throw new DomainException("Patient not found");
-        }
+        if (!Exists || !IsActive)
+            throw new DomainException("Patient not found or already inactive");
 
-        if (!IsActive)
-        {
-            throw new DomainException("Patient already deactivated");
-        }
+        if (patientId != Id)
+            throw new DomainException("Patient id mismatch");
 
         return new PatientDeactivatedEvent
         {
@@ -105,35 +75,48 @@ public sealed class PatientAggregate
         };
     }
 
-    public void Apply(string eventType, string payload, int version)
+    public void LoadFrom(IEnumerable<EventRecord> history)
     {
-        switch (eventType)
+        foreach (var item in history.OrderBy(x => x.Version))
+        {
+            Apply(item);
+        }
+    }
+
+    private void Apply(EventRecord record)
+    {
+        switch (record.EventType)
         {
             case nameof(PatientCreatedEvent):
-                var created = System.Text.Json.JsonSerializer.Deserialize<PatientCreatedEvent>(payload)
-                    ?? throw new DomainException("Failed to deserialize PatientCreatedEvent");
-                Id = created.Id;
-                Exists = true;
-                IsActive = true;
-                FullName = created.FullName;
-                BirthDate = created.BirthDate;
-                Gender = created.Gender;
-                Version = version;
-                break;
+                {
+                    var e = JsonSerializer.Deserialize<PatientCreatedEvent>(record.Payload)!;
+                    Id = e.Id;
+                    FullName = e.FullName;
+                    BirthDate = e.BirthDate;
+                    Gender = e.Gender;
+                    Exists = true;
+                    IsActive = true;
+                    Version = e.Version;
+                    break;
+                }
+
             case nameof(PatientUpdatedEvent):
-                var updated = System.Text.Json.JsonSerializer.Deserialize<PatientUpdatedEvent>(payload)
-                    ?? throw new DomainException("Failed to deserialize PatientUpdatedEvent");
-                Id = updated.PatientId;
-                Exists = true;
-                FullName = updated.FullName ?? string.Empty;
-                BirthDate = updated.BirthDate ?? BirthDate;
-                Gender = updated.Gender;
-                Version = version;
-                break;
+                {
+                    var e = JsonSerializer.Deserialize<PatientUpdatedEvent>(record.Payload)!;
+                    FullName = e.FullName ?? FullName;
+                    BirthDate = e.BirthDate ?? BirthDate;
+                    Gender = e.Gender ?? Gender;
+                    Version = e.Version;
+                    break;
+                }
+
             case nameof(PatientDeactivatedEvent):
-                IsActive = false;
-                Version = version;
-                break;
+                {
+                    var e = JsonSerializer.Deserialize<PatientDeactivatedEvent>(record.Payload)!;
+                    IsActive = !e.IsDeleted;
+                    Version = e.Version;
+                    break;
+                }
         }
     }
 }

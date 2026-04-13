@@ -1,4 +1,5 @@
-using UltrasoundAssistant.AggregationService.Infrastructure;
+using System.Text.Json;
+using UltrasoundAssistant.AggregationService.Infrastructure.Persistence;
 using UltrasoundAssistant.Contracts.Enums;
 using UltrasoundAssistant.Contracts.Events.ReportEvent;
 
@@ -7,31 +8,34 @@ namespace UltrasoundAssistant.AggregationService.Domain;
 public sealed class ReportAggregate
 {
     public Guid Id { get; private set; }
+    public Guid PatientId { get; private set; }
+    public Guid DoctorId { get; private set; }
+    public Guid TemplateId { get; private set; }
+
     public bool Exists { get; private set; }
     public bool IsDeleted { get; private set; }
+    public ReportStatus Status { get; private set; }
     public int Version { get; private set; }
-    public ReportStatus Status { get; private set; } = ReportStatus.Draft;
-    public Dictionary<string, string> Fields { get; } = new(StringComparer.OrdinalIgnoreCase);
 
-    public void LoadFrom(IEnumerable<EventRecordEnvelope> events)
-    {
-        foreach (var item in events)
-        {
-            Apply(item.EventType, item.Payload, item.Version);
-        }
-    }
+    public Dictionary<string, ReportFieldState> Fields { get; } =
+        new(StringComparer.OrdinalIgnoreCase);
 
     public ReportCreatedEvent Create(Guid reportId, Guid patientId, Guid doctorId, Guid templateId)
     {
-        if (Exists)
-        {
-            throw new DomainException("Report already exists");
-        }
+        if (reportId == Guid.Empty)
+            throw new DomainException("Report id is required");
 
-        if (reportId == Guid.Empty || patientId == Guid.Empty || doctorId == Guid.Empty || templateId == Guid.Empty)
-        {
-            throw new DomainException("Invalid report data");
-        }
+        if (patientId == Guid.Empty)
+            throw new DomainException("Patient id is required");
+
+        if (doctorId == Guid.Empty)
+            throw new DomainException("Doctor id is required");
+
+        if (templateId == Guid.Empty)
+            throw new DomainException("Template id is required");
+
+        if (Exists)
+            throw new DomainException("Report already exists");
 
         return new ReportCreatedEvent
         {
@@ -44,46 +48,19 @@ public sealed class ReportAggregate
         };
     }
 
-    public ReportDeletedEvent DeleteDraft()
-    {
-        if (!Exists || IsDeleted)
-        {
-            throw new DomainException("Report not found");
-        }
-
-        if (Status != ReportStatus.Draft)
-        {
-            throw new DomainException("Only draft reports can be deleted");
-        }
-
-        return new ReportDeletedEvent
-        {
-            ReportId = Id,
-            Version = Version + 1
-        };
-    }
-
     public ReportFieldUpdatedEvent UpdateField(string fieldName, string value, double confidence)
     {
         if (!Exists || IsDeleted)
-        {
             throw new DomainException("Report not found");
-        }
 
         if (Status == ReportStatus.Completed)
-        {
-            throw new DomainException("Cannot update completed report");
-        }
+            throw new DomainException("Completed report cannot be changed");
 
-        if (string.IsNullOrWhiteSpace(fieldName) || string.IsNullOrWhiteSpace(value))
-        {
-            throw new DomainException("Field name and value are required");
-        }
+        if (string.IsNullOrWhiteSpace(fieldName))
+            throw new DomainException("Field name is required");
 
-        if (confidence is < 0 or > 1)
-        {
-            throw new DomainException("Confidence should be in range [0, 1]");
-        }
+        if (string.IsNullOrWhiteSpace(value))
+            throw new DomainException("Field value is required");
 
         return new ReportFieldUpdatedEvent
         {
@@ -98,19 +75,10 @@ public sealed class ReportAggregate
     public ReportCompletedEvent Complete()
     {
         if (!Exists || IsDeleted)
-        {
             throw new DomainException("Report not found");
-        }
 
         if (Status == ReportStatus.Completed)
-        {
             throw new DomainException("Report already completed");
-        }
-
-        if (Fields.Count == 0)
-        {
-            throw new DomainException("Cannot complete report without filled fields");
-        }
 
         return new ReportCompletedEvent
         {
@@ -119,33 +87,69 @@ public sealed class ReportAggregate
         };
     }
 
-    private void Apply(string eventType, string payload, int version)
+    public ReportDeletedEvent DeleteDraft()
     {
-        switch (eventType)
+        if (!Exists || IsDeleted)
+            throw new DomainException("Report not found");
+
+        return new ReportDeletedEvent
+        {
+            ReportId = Id,
+            Version = Version + 1
+        };
+    }
+
+    public void LoadFrom(IEnumerable<EventRecord> history)
+    {
+        foreach (var item in history.OrderBy(x => x.Version))
+        {
+            Apply(item);
+        }
+    }
+
+    private void Apply(EventRecord record)
+    {
+        switch (record.EventType)
         {
             case nameof(ReportCreatedEvent):
-                var created = System.Text.Json.JsonSerializer.Deserialize<ReportCreatedEvent>(payload)
-                    ?? throw new DomainException("Failed to deserialize ReportCreatedEvent");
-                Id = created.Id;
-                Exists = true;
-                IsDeleted = false;
-                Status = created.Status;
-                Version = version;
-                break;
+                {
+                    var e = JsonSerializer.Deserialize<ReportCreatedEvent>(record.Payload)!;
+                    Id = e.Id;
+                    PatientId = e.PatientId;
+                    DoctorId = e.DoctorId;
+                    TemplateId = e.TemplateId;
+                    Status = e.Status;
+                    Exists = true;
+                    IsDeleted = false;
+                    Version = e.Version;
+                    break;
+                }
+
             case nameof(ReportFieldUpdatedEvent):
-                var updated = System.Text.Json.JsonSerializer.Deserialize<ReportFieldUpdatedEvent>(payload)
-                    ?? throw new DomainException("Failed to deserialize ReportFieldUpdatedEvent");
-                Fields[updated.FieldName] = updated.Value;
-                Version = version;
-                break;
+                {
+                    var e = JsonSerializer.Deserialize<ReportFieldUpdatedEvent>(record.Payload)!;
+                    Fields[e.FieldName] = new ReportFieldState(e.Value, e.Confidence);
+                    Version = e.Version;
+                    break;
+                }
+
             case nameof(ReportCompletedEvent):
-                Status = ReportStatus.Completed;
-                Version = version;
-                break;
+                {
+                    var e = JsonSerializer.Deserialize<ReportCompletedEvent>(record.Payload)!;
+                    Status = ReportStatus.Completed;
+                    Version = e.Version;
+                    break;
+                }
+
             case nameof(ReportDeletedEvent):
-                IsDeleted = true;
-                Version = version;
-                break;
+                {
+                    var e = JsonSerializer.Deserialize<ReportDeletedEvent>(record.Payload)!;
+                    IsDeleted = true;
+                    Version = e.Version;
+                    break;
+                }
         }
     }
 }
+
+public sealed record ReportFieldState(string Value, double Confidence);

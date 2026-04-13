@@ -19,4 +19,8 @@
     <ProjectReference Include="..\UltrasoundAssistant.Contracts\UltrasoundAssistant.Contracts.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="MappingProfile\" />
+  </ItemGroup>
+
 </Project>

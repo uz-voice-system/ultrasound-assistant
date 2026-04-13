@@ -10,36 +10,6 @@ namespace UltrasoundAssistant.ApiGateway.Controllers;
 [Route("api/patients")]
 public sealed class PatientsGatewayController(IHttpClientFactory httpClientFactory) : ControllerBase
 {
-    [HttpPost]
-    public async Task<IActionResult> Create(
-        [FromHeader(Name = "X-Command-Id")] Guid? commandId,
-        [FromBody] CreatePatientRequest? request,
-        CancellationToken cancellationToken)
-    {
-        if (request is null)
-        {
-            return BadRequest(new { message = "Body is required" });
-        }
-
-        var cmdId = commandId ?? Guid.NewGuid();
-        var patientId = Guid.NewGuid();
-        var command = new CreatePatientCommand
-        {
-            Id = patientId,
-            FullName = request.FullName,
-            BirthDate = request.BirthDate,
-            Gender = request.Gender
-        };
-
-        var client = httpClientFactory.CreateClient("Aggregation");
-        using var message = new HttpRequestMessage(HttpMethod.Post, "commands/patients/create")
-        {
-            Content = JsonContent.Create(command)
-        };
-        message.Headers.Add("X-Command-Id", cmdId.ToString());
-        var response = await client.SendAsync(message, cancellationToken);
-        return await ForwardResponseAsync(response, cancellationToken);
-    }
 
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(

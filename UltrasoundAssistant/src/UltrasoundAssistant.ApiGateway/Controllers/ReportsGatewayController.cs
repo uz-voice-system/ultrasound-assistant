@@ -83,26 +83,6 @@ public sealed class ReportsGatewayController(IHttpClientFactory httpClientFactor
         return await ForwardResponseAsync(response, cancellationToken);
     }
 
-    [HttpPost("{id:guid}/process-voice")]
-    public async Task<IActionResult> ProcessVoice(
-        Guid id,
-        [FromHeader(Name = "X-Command-Id")] Guid commandId,
-        [FromHeader(Name = "X-Expected-Version")] int expectedVersion,
-        [FromBody] ProcessVoiceDataCommand command,
-        CancellationToken cancellationToken)
-    {
-        command.ReportId = id;
-        var client = httpClientFactory.CreateClient("Aggregation");
-        using var message = new HttpRequestMessage(HttpMethod.Post, "commands/reports/process-voice")
-        {
-            Content = JsonContent.Create(command)
-        };
-        message.Headers.Add("X-Command-Id", commandId.ToString());
-        message.Headers.Add("X-Expected-Version", expectedVersion.ToString());
-        var response = await client.SendAsync(message, cancellationToken);
-        return await ForwardResponseAsync(response, cancellationToken);
-    }
-
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> Get(Guid id, CancellationToken cancellationToken)
     {
