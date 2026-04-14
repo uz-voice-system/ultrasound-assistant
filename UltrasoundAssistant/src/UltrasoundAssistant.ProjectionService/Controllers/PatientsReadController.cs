@@ -1,13 +1,13 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using UltrasoundAssistant.Contracts.Patients;
-using UltrasoundAssistant.ProjectionService.Persistence;
+using UltrasoundAssistant.ProjectionService.Infrastructure.Persistence;
 
 namespace UltrasoundAssistant.ProjectionService.Controllers;
 
 [ApiController]
 [Route("api/read/patients")]
-public sealed class PatientsReadController(ReadDbContext db) : ControllerBase
+public sealed class PatientsReadController(ProjectionDbContext db) : ControllerBase
 {
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<PatientDto>> GetById(Guid id, CancellationToken cancellationToken)
@@ -22,7 +22,7 @@ public sealed class PatientsReadController(ReadDbContext db) : ControllerBase
         {
             Id = row.Id,
             FullName = row.FullName,
-            BirthDate = row.BirthDate.ToDateTime(TimeOnly.MinValue),
+            BirthDate = row.BirthDate,
             Gender = row.Gender,
             Version = row.Version
         });
@@ -38,7 +38,7 @@ public sealed class PatientsReadController(ReadDbContext db) : ControllerBase
             {
                 Id = p.Id,
                 FullName = p.FullName,
-                BirthDate = p.BirthDate.ToDateTime(TimeOnly.MinValue),
+                BirthDate = p.BirthDate,
                 Gender = p.Gender,
                 Version = p.Version
             })

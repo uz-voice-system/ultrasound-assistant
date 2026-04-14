@@ -18,10 +18,13 @@ public sealed class EfCoreEventStore : IEventStore
         Guid aggregateId,
         CancellationToken cancellationToken)
     {
-        var items = await _dbContext.Events
+        var entities = await _dbContext.Events
             .AsNoTracking()
             .Where(x => x.AggregateType == aggregateType && x.AggregateId == aggregateId)
             .OrderBy(x => x.Version)
+            .ToListAsync(cancellationToken);
+
+        var items = entities
             .Select(x => new EventRecord
             {
                 EventId = Guid.Empty,
@@ -31,7 +34,7 @@ public sealed class EfCoreEventStore : IEventStore
                 RoutingKey = x.RoutingKey,
                 CreatedAtUtc = x.CreatedAtUtc
             })
-            .ToListAsync(cancellationToken);
+            .ToList();
 
         return items;
     }

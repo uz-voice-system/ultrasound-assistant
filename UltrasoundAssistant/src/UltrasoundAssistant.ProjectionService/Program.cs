@@ -1,28 +1,30 @@
 using Microsoft.EntityFrameworkCore;
-using UltrasoundAssistant.ProjectionService.Persistence;
-using UltrasoundAssistant.ProjectionService.Services;
+using UltrasoundAssistant.ProjectionService.Extensions;
+using UltrasoundAssistant.ProjectionService.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddDbContext<ReadDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("ReadDb")));
-
-builder.Services.AddScoped<DomainEventProcessor>();
-builder.Services.AddHostedService<MigrationHostedService>();
-builder.Services.AddHostedService<RabbitMqProjectionConsumer>();
-
 builder.Services.AddControllers();
-builder.Services.AddOpenApi();
+builder.Services.AddProjectionInfrastructure(builder.Configuration);
+builder.Services.AddProjectionApplication();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+using (var scope = app.Services.CreateScope())
 {
-    app.MapOpenApi();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    logger.LogInformation("Starting ReadDb migration...");
+
+    var dbContext = scope.ServiceProvider.GetRequiredService<ProjectionDbContext>();
+    dbContext.Database.Migrate();
+
+    logger.LogInformation("ReadDb migration completed.");
 }
 
-app.UseAuthorization();
+app.UseSwagger();
+app.UseSwaggerUI();
 
 app.MapControllers();
 

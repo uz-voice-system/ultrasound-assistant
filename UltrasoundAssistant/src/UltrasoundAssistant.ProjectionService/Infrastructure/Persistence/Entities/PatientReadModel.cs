@@ -1,12 +1,12 @@
-namespace UltrasoundAssistant.ProjectionService.Persistence.Entities;
+namespace UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Entities;
 
-public sealed class PatientReadEntity
+public sealed class PatientReadModel
 {
     public Guid Id { get; set; }
 
     public string FullName { get; set; } = string.Empty;
 
-    public DateOnly BirthDate { get; set; }
+    public DateTime BirthDate { get; set; }
 
     public string? Gender { get; set; }
 

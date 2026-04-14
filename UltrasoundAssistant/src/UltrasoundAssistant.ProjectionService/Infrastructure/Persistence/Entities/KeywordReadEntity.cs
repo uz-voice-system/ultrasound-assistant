@@ -1,4 +1,4 @@
-namespace UltrasoundAssistant.ProjectionService.Persistence.Entities;
+namespace UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Entities;
 
 public sealed class KeywordReadEntity
 {
@@ -6,7 +6,7 @@ public sealed class KeywordReadEntity
 
     public Guid TemplateId { get; set; }
 
-    public TemplateReadEntity? Template { get; set; }
+    public TemplateReadModel? Template { get; set; }
 
     public string Phrase { get; set; } = string.Empty;
 

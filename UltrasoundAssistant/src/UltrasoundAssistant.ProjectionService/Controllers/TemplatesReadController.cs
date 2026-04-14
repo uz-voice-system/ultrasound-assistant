@@ -1,13 +1,14 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using UltrasoundAssistant.Contracts.Templates;
-using UltrasoundAssistant.ProjectionService.Persistence;
+using UltrasoundAssistant.ProjectionService.Infrastructure.Persistence;
+using UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Entities;
 
 namespace UltrasoundAssistant.ProjectionService.Controllers;
 
 [ApiController]
 [Route("api/read/templates")]
-public sealed class TemplatesReadController(ReadDbContext db) : ControllerBase
+public sealed class TemplatesReadController(ProjectionDbContext db) : ControllerBase
 {
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<TemplateDto>> GetById(Guid id, CancellationToken cancellationToken)
@@ -34,7 +35,7 @@ public sealed class TemplatesReadController(ReadDbContext db) : ControllerBase
         return Ok(rows.Select(Map).ToList());
     }
 
-    private static TemplateDto Map(Persistence.Entities.TemplateReadEntity row) =>
+    private static TemplateDto Map(TemplateReadModel row) =>
         new()
         {
             Id = row.Id,

@@ -113,7 +113,7 @@ public sealed class ReportAggregate
         {
             case nameof(ReportCreatedEvent):
                 {
-                    var e = JsonSerializer.Deserialize<ReportCreatedEvent>(record.Payload)!;
+                    var e = JsonSerializer.Deserialize<ReportCreatedEvent>(record.Payload, JsonDefaults.Web)!;
                     Id = e.Id;
                     PatientId = e.PatientId;
                     DoctorId = e.DoctorId;
@@ -127,7 +127,7 @@ public sealed class ReportAggregate
 
             case nameof(ReportFieldUpdatedEvent):
                 {
-                    var e = JsonSerializer.Deserialize<ReportFieldUpdatedEvent>(record.Payload)!;
+                    var e = JsonSerializer.Deserialize<ReportFieldUpdatedEvent>(record.Payload, JsonDefaults.Web)!;
                     Fields[e.FieldName] = new ReportFieldState(e.Value, e.Confidence);
                     Version = e.Version;
                     break;
@@ -135,7 +135,7 @@ public sealed class ReportAggregate
 
             case nameof(ReportCompletedEvent):
                 {
-                    var e = JsonSerializer.Deserialize<ReportCompletedEvent>(record.Payload)!;
+                    var e = JsonSerializer.Deserialize<ReportCompletedEvent>(record.Payload, JsonDefaults.Web)!;
                     Status = ReportStatus.Completed;
                     Version = e.Version;
                     break;
@@ -143,7 +143,7 @@ public sealed class ReportAggregate
 
             case nameof(ReportDeletedEvent):
                 {
-                    var e = JsonSerializer.Deserialize<ReportDeletedEvent>(record.Payload)!;
+                    var e = JsonSerializer.Deserialize<ReportDeletedEvent>(record.Payload, JsonDefaults.Web)!;
                     IsDeleted = true;
                     Version = e.Version;
                     break;

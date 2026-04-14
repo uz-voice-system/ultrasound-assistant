@@ -1,4 +1,4 @@
-namespace UltrasoundAssistant.ProjectionService.Persistence.Entities;
+namespace UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Entities;
 
 /// <summary>
 /// Идемпотентность обработки сообщений из брокера (по доменному EventId).

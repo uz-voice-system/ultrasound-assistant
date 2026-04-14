@@ -95,7 +95,7 @@ public sealed class TemplateAggregate
         {
             case nameof(TemplateCreatedEvent):
                 {
-                    var e = JsonSerializer.Deserialize<TemplateCreatedEvent>(record.Payload)!;
+                    var e = JsonSerializer.Deserialize<TemplateCreatedEvent>(record.Payload, JsonDefaults.Web)!;
                     Id = e.TemplateId;
                     Name = e.Name;
                     Keywords = new Dictionary<string, string>(e.Keywords, StringComparer.OrdinalIgnoreCase);
@@ -107,7 +107,7 @@ public sealed class TemplateAggregate
 
             case nameof(TemplateUpdatedEvent):
                 {
-                    var e = JsonSerializer.Deserialize<TemplateUpdatedEvent>(record.Payload)!;
+                    var e = JsonSerializer.Deserialize<TemplateUpdatedEvent>(record.Payload, JsonDefaults.Web)!;
                     Name = string.IsNullOrWhiteSpace(e.Name) ? Name : e.Name;
                     Keywords = e.Keywords is null || e.Keywords.Count == 0
                         ? Keywords
@@ -118,7 +118,7 @@ public sealed class TemplateAggregate
 
             case nameof(TemplateDeletedEvent):
                 {
-                    var e = JsonSerializer.Deserialize<TemplateDeletedEvent>(record.Payload)!;
+                    var e = JsonSerializer.Deserialize<TemplateDeletedEvent>(record.Payload, JsonDefaults.Web)!;
                     IsDeleted = true;
                     Version = e.Version;
                     break;

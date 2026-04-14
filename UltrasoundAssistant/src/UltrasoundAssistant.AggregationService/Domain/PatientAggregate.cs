@@ -89,7 +89,7 @@ public sealed class PatientAggregate
         {
             case nameof(PatientCreatedEvent):
                 {
-                    var e = JsonSerializer.Deserialize<PatientCreatedEvent>(record.Payload)!;
+                    var e = JsonSerializer.Deserialize<PatientCreatedEvent>(record.Payload, JsonDefaults.Web)!;
                     Id = e.Id;
                     FullName = e.FullName;
                     BirthDate = e.BirthDate;
@@ -102,7 +102,7 @@ public sealed class PatientAggregate
 
             case nameof(PatientUpdatedEvent):
                 {
-                    var e = JsonSerializer.Deserialize<PatientUpdatedEvent>(record.Payload)!;
+                    var e = JsonSerializer.Deserialize<PatientUpdatedEvent>(record.Payload, JsonDefaults.Web)!;
                     FullName = e.FullName ?? FullName;
                     BirthDate = e.BirthDate ?? BirthDate;
                     Gender = e.Gender ?? Gender;
@@ -112,7 +112,7 @@ public sealed class PatientAggregate
 
             case nameof(PatientDeactivatedEvent):
                 {
-                    var e = JsonSerializer.Deserialize<PatientDeactivatedEvent>(record.Payload)!;
+                    var e = JsonSerializer.Deserialize<PatientDeactivatedEvent>(record.Payload, JsonDefaults.Web)!;
                     IsActive = !e.IsDeleted;
                     Version = e.Version;
                     break;

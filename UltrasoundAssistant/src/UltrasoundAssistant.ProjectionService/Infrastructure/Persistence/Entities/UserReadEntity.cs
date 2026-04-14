@@ -1,6 +1,6 @@
 using UltrasoundAssistant.Contracts.Enums;
 
-namespace UltrasoundAssistant.ProjectionService.Persistence.Entities;
+namespace UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Entities;
 
 public sealed class UserReadEntity
 {

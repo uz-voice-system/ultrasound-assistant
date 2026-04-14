@@ -128,8 +128,11 @@ services:
       ConnectionStrings__ReadDb: Host=read.db;Port=5432;Database=read_db;Username=read_user;Password=read_pass
       RabbitMq__Host: rabbitmq
       RabbitMq__Port: 5672
+      RabbitMq__Exchange: ultrasound.events
+      RabbitMq__Queue: projection-service
       RabbitMq__Username: admin
       RabbitMq__Password: admin
+      RabbitMq__VirtualHost: /
     depends_on:
       rabbitmq:
         condition: service_started
