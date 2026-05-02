@@ -9,13 +9,16 @@ public sealed class ReportsController : GatewayControllerBase
 {
     private readonly AggregationApiClient _aggregationClient;
     private readonly ProjectionApiClient _projectionClient;
+    private readonly ReportGeneratorClient _reportGenerator;
 
     public ReportsController(
         AggregationApiClient aggregationClient,
-        ProjectionApiClient projectionClient)
+        ProjectionApiClient projectionClient,
+        ReportGeneratorClient reportGenerator)
     {
         _aggregationClient = aggregationClient;
         _projectionClient = projectionClient;
+        _reportGenerator = reportGenerator;
     }
 
     [HttpPost]
@@ -29,13 +32,6 @@ public sealed class ReportsController : GatewayControllerBase
     public async Task<IActionResult> UpdateField([FromBody] UpdateReportFieldCommand command, CancellationToken ct)
     {
         var result = await _aggregationClient.PostAsync("/api/reports/field", command, ct);
-        return ProxyJson(result.StatusCode, result.Content);
-    }
-
-    [HttpPost("voice")]
-    public async Task<IActionResult> ProcessVoice([FromBody] ProcessVoiceDataCommand command, CancellationToken ct)
-    {
-        var result = await _aggregationClient.PostAsync("/api/reports/voice", command, ct);
         return ProxyJson(result.StatusCode, result.Content);
     }
 
@@ -65,5 +61,13 @@ public sealed class ReportsController : GatewayControllerBase
     {
         var result = await _projectionClient.GetAsync($"/api/read/reports/{id}", ct);
         return ProxyJson(result.StatusCode, result.Content);
+    }
+
+    [HttpGet("{id:guid}/pdf")]
+    public async Task<IActionResult> GetPdf(Guid id, CancellationToken ct)
+    {
+        var pdf = await _reportGenerator.GetPdfAsync(id, ct);
+
+        return File(pdf, "application/pdf", $"report-{id:N}.pdf");
     }
 }

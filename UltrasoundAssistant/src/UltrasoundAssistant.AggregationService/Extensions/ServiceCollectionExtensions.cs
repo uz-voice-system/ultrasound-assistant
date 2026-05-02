@@ -23,7 +23,6 @@ public static class ServiceCollectionExtensions
             configuration.GetSection("RabbitMq"));
 
         services.AddScoped<IEventStore, EfCoreEventStore>();
-        services.AddScoped<ICommandDeduplicationStore, EfCoreCommandDeduplicationStore>();
         services.AddSingleton<IIntegrationEventPublisher, RabbitMqIntegrationEventPublisher>();
         services.AddScoped<IUnitOfWork, NoOpUnitOfWork>();
 
@@ -32,8 +31,6 @@ public static class ServiceCollectionExtensions
 
     public static IServiceCollection AddAggregationApplication(this IServiceCollection services)
     {
-        services.AddSingleton<VoiceCommandMatcher>();
-
         services.AddScoped<PatientCommandHandler>();
         services.AddScoped<TemplateCommandHandler>();
         services.AddScoped<ReportCommandHandler>();

@@ -1,49 +1,46 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using UltrasoundAssistant.Contracts.Templates;
-using UltrasoundAssistant.ProjectionService.Infrastructure.Persistence;
-using UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Entities;
+using UltrasoundAssistant.Contracts.Reads.Templates.Admin;
+using UltrasoundAssistant.Contracts.Reads.Templates.Details;
+using UltrasoundAssistant.Contracts.Reads.Templates.Search;
+using UltrasoundAssistant.ProjectionService.Application.Abstractions;
 
 namespace UltrasoundAssistant.ProjectionService.Controllers;
 
 [ApiController]
 [Route("api/read/templates")]
-public sealed class TemplatesReadController(ProjectionDbContext db) : ControllerBase
+public sealed class TemplatesReadController : ControllerBase
 {
+    private readonly ITemplateReadService _templateReadService;
+
+    public TemplatesReadController(ITemplateReadService templateReadService)
+    {
+        _templateReadService = templateReadService;
+    }
+
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<TemplateDto>> GetById(Guid id, CancellationToken cancellationToken)
     {
-        var row = await db.Templates.AsNoTracking()
-            .Include(t => t.Keywords)
-            .FirstOrDefaultAsync(t => t.Id == id && !t.IsDeleted, cancellationToken);
-        if (row is null)
-        {
+        var template = await _templateReadService.GetByIdAsync(id, cancellationToken);
+
+        if (template is null)
             return NotFound();
-        }
 
-        return Ok(Map(row));
+        return Ok(template);
     }
 
-    [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<TemplateDto>>> List(CancellationToken cancellationToken)
+    [HttpGet("search")]
+    public async Task<ActionResult<IReadOnlyList<TemplateSummaryDto>>> SearchForDoctor([FromQuery] TemplateSearchRequest filter, CancellationToken cancellationToken)
     {
-        var rows = await db.Templates.AsNoTracking()
-            .Include(t => t.Keywords)
-            .Where(t => !t.IsDeleted)
-            .OrderBy(t => t.Name)
-            .ToListAsync(cancellationToken);
-        return Ok(rows.Select(Map).ToList());
+        var templates = await _templateReadService.SearchForDoctorAsync(filter, cancellationToken);
+
+        return Ok(templates);
     }
 
-    private static TemplateDto Map(TemplateReadModel row) =>
-        new()
-        {
-            Id = row.Id,
-            Name = row.Name,
-            Version = row.Version,
-            Keywords = row.Keywords
-                .OrderBy(k => k.Phrase)
-                .Select(k => new TemplateKeywordDto { Id = k.Id, Phrase = k.Phrase, TargetField = k.TargetField })
-                .ToList()
-        };
+    [HttpGet("search-admin")]
+    public async Task<ActionResult<IReadOnlyList<TemplateSummaryDto>>> SearchForAdmin([FromQuery] TemplateAdminSearchRequest filter, CancellationToken cancellationToken)
+    {
+        var templates = await _templateReadService.SearchForAdminAsync(filter, cancellationToken);
+
+        return Ok(templates);
+    }
 }

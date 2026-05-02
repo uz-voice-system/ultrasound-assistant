@@ -1,6 +1,5 @@
 using UltrasoundAssistant.AggregationService.Infrastructure;
 using UltrasoundAssistant.AggregationService.Infrastructure.Persistence;
-using UltrasoundAssistant.Contracts.Persistence.EventStore.Contracts;
 
 namespace UltrasoundAssistant.AggregationService.Application.Abstractions;
 

@@ -6,10 +6,7 @@ public static class PatientCommandValidator
 {
     public static void Validate(CreatePatientCommand command)
     {
-        if (command.CommandId == Guid.Empty)
-            throw new ArgumentException("CommandId is required");
-
-        if (command.Id == Guid.Empty)
+        if (command.PatientId == Guid.Empty)
             throw new ArgumentException("Patient id is required");
 
         if (string.IsNullOrWhiteSpace(command.FullName))
@@ -18,9 +15,6 @@ public static class PatientCommandValidator
 
     public static void Validate(UpdatePatientCommand command)
     {
-        if (command.CommandId == Guid.Empty)
-            throw new ArgumentException("CommandId is required");
-
         if (command.PatientId == Guid.Empty)
             throw new ArgumentException("PatientId is required");
 
@@ -30,9 +24,6 @@ public static class PatientCommandValidator
 
     public static void Validate(DeactivatePatientCommand command)
     {
-        if (command.CommandId == Guid.Empty)
-            throw new ArgumentException("CommandId is required");
-
         if (command.PatientId == Guid.Empty)
             throw new ArgumentException("PatientId is required");
 

@@ -16,7 +16,7 @@ namespace UltrasoundAssistant.Contracts.Events.PatientEvent
         /// <summary>
         /// Идентификатор пациента.
         /// </summary>
-        public Guid Id { get; set; }
+        public Guid PatientId { get; set; }
 
         /// <summary>
         /// Полное имя пациента.
@@ -34,7 +34,7 @@ namespace UltrasoundAssistant.Contracts.Events.PatientEvent
         public string? Gender { get; set; }
 
         /// <summary>
-        /// Версия агрегата (для event sourcing / concurrency).
+        /// Версия агрегата.
         /// </summary>
         public int Version { get; set; } = 1;
     }

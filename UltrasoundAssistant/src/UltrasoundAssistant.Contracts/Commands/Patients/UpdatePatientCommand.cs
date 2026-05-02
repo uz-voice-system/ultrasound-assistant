@@ -2,7 +2,6 @@ namespace UltrasoundAssistant.Contracts.Commands.Patients;
 
 public sealed class UpdatePatientCommand
 {
-    public Guid CommandId { get; set; }
     public Guid PatientId { get; set; }
     public int ExpectedVersion { get; set; }
     public string? FullName { get; set; }

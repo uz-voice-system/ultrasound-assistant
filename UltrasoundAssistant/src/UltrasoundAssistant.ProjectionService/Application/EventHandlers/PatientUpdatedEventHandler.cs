@@ -36,7 +36,7 @@ public sealed class PatientUpdatedEventHandler : IIntegrationEventHandler
             patient.FullName = @event.FullName;
 
         if (@event.BirthDate.HasValue)
-            patient.BirthDate = @event.BirthDate.Value;
+            patient.BirthDate = DateTimeHelper.EnsureUtc(@event.BirthDate.Value);
 
         if (@event.Gender is not null)
             patient.Gender = @event.Gender;

@@ -2,7 +2,6 @@ namespace UltrasoundAssistant.Contracts.Commands.Reports;
 
 public sealed class UpdateReportFieldCommand
 {
-    public Guid CommandId { get; set; }
     public Guid ReportId { get; set; }
     public int ExpectedVersion { get; set; }
     public string FieldName { get; set; } = string.Empty;

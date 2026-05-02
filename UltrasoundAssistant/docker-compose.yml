@@ -17,6 +17,11 @@ services:
       - rabbitmq_data:/var/lib/rabbitmq
     networks:
       - us-backend
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
   # БД Event Store (для Aggregation Service)
   eventstore.db:
@@ -85,6 +90,7 @@ services:
       ASPNETCORE_ENVIRONMENT: Docker
       Services__AggregationBaseUrl: http://aggregation-service:8080
       Services__ProjectionBaseUrl: http://projection-service:8080
+      Services__ReportGeneratorBaseUrl: http://report-generator:8080
     depends_on:
       - rabbitmq
       - aggregation-service
@@ -92,7 +98,7 @@ services:
     networks:
       - us-backend
 
-  # Aggregation Service (worker + event store)
+  # Aggregation Service
   aggregation-service:
     container_name: us-aggregation-service
     build:
@@ -109,13 +115,13 @@ services:
       RabbitMq__Password: admin
     depends_on:
       rabbitmq:
-        condition: service_started
+        condition: service_healthy
       eventstore.db:
-        condition: service_started
+        condition: service_healthy
     networks:
       - us-backend
 
-# Projection Service (HTTP + проекции в read.db)
+# Projection Service
   projection-service:
     container_name: us-projection-service
     build:
@@ -135,13 +141,34 @@ services:
       RabbitMq__VirtualHost: /
     depends_on:
       rabbitmq:
-        condition: service_started
+        condition: service_healthy
       read.db:
-        condition: service_started
+        condition: service_healthy
     networks:
       - us-backend
 
-  # Audit Service (worker + audit.db)
+  # VoiceProcessingService
+  # voice-processing-service:
+  #   container_name: us-voice-processing-service
+  #   build:
+  #     context: .
+  #     dockerfile: src/UltrasoundAssistant.VoiceProcessingService/Dockerfile
+  #   ports:
+  #     - "5003:8080"
+  #   environment:
+  #     ASPNETCORE_ENVIRONMENT: Docker
+  #     ProjectionApi__BaseUrl: http://projection-service:8080
+  #     Whisper__Model: base
+  #     Whisper__ModelsPath: /tmp/models
+  #   volumes:
+  #     - whisper_models:/tmp/models
+  #   depends_on:
+  #     projection-service:
+  #       condition: service_started
+  #   networks:
+  #     - us-backend
+
+  # Audit Service
   audit-service:
     container_name: us-audit-service
     build:
@@ -162,20 +189,19 @@ services:
     networks:
       - us-backend
 
-  # Report Generator (worker)
+  # Report Generator
   report-generator:
     container_name: us-report-generator
     build:
       context: .
       dockerfile: src/UltrasoundAssistant.ReportGenerator/Dockerfile
+    ports:
+    - "5004:8080"
     environment:
       ASPNETCORE_ENVIRONMENT: Docker
-      RabbitMQ__Host: rabbitmq
-      RabbitMQ__Port: 5672
-      RabbitMQ__Username: admin
-      RabbitMQ__Password: admin
+      Services__ProjectionBaseUrl: http://projection-service:8080
     depends_on:
-      rabbitmq:
+      projection-service:
         condition: service_started
     networks:
       - us-backend
@@ -185,3 +211,4 @@ volumes:
   eventstore_data:
   readdb_data:
   auditdb_data:
+  # whisper_models:

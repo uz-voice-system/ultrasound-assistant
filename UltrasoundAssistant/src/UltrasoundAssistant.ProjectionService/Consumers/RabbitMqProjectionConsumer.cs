@@ -29,13 +29,45 @@ public sealed class RabbitMqProjectionConsumer : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            try
+            {
+                await StartConsumerAsync(stoppingToken);
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                break;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "RabbitMQ is unavailable. Retrying in 5 seconds...");
+
+                await DisposeRabbitMqAsync();
+
+                try
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
+                }
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                {
+                    break;
+                }
+            }
+        }
+    }
+
+    private async Task StartConsumerAsync(CancellationToken stoppingToken)
+    {
         var factory = new ConnectionFactory
         {
             HostName = _options.Host,
             Port = _options.Port,
             UserName = _options.Username,
             Password = _options.Password,
-            VirtualHost = _options.VirtualHost
+            VirtualHost = _options.VirtualHost,
+            AutomaticRecoveryEnabled = true,
+            NetworkRecoveryInterval = TimeSpan.FromSeconds(5)
         };
 
         _connection = await factory.CreateConnectionAsync(stoppingToken);
@@ -57,19 +89,25 @@ public sealed class RabbitMqProjectionConsumer : BackgroundService
             arguments: null,
             cancellationToken: stoppingToken);
 
+        await _channel.BasicQosAsync(
+            prefetchSize: 0,
+            prefetchCount: 10,
+            global: false,
+            cancellationToken: stoppingToken);
+
         var routingKeys = new[]
         {
-            "patient.created",
-            "patient.updated",
-            "patient.deactivated",
-            "template.created",
-            "template.updated",
-            "template.deleted",
-            "report.created",
-            "report.field.updated",
-            "report.completed",
-            "report.deleted"
-        };
+        "patient.created",
+        "patient.updated",
+        "patient.deactivated",
+        "template.created",
+        "template.updated",
+        "template.deleted",
+        "report.created",
+        "report.field.updated",
+        "report.completed",
+        "report.deleted"
+    };
 
         foreach (var routingKey in routingKeys)
         {
@@ -87,6 +125,7 @@ public sealed class RabbitMqProjectionConsumer : BackgroundService
         {
             var routingKey = ea.RoutingKey;
             var payload = Encoding.UTF8.GetString(ea.Body.ToArray());
+
             _logger.LogInformation(
                 "Received message. RoutingKey={RoutingKey}, Payload={Payload}",
                 routingKey,
@@ -95,6 +134,7 @@ public sealed class RabbitMqProjectionConsumer : BackgroundService
             try
             {
                 using var scope = _scopeFactory.CreateScope();
+
                 var handlers = scope.ServiceProvider.GetServices<IIntegrationEventHandler>();
 
                 var matchedHandlers = handlers
@@ -118,7 +158,15 @@ public sealed class RabbitMqProjectionConsumer : BackgroundService
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to process message with routing key {RoutingKey}", routingKey);
-                await _channel.BasicNackAsync(ea.DeliveryTag, false, requeue: true, cancellationToken: stoppingToken);
+
+                if (_channel is not null)
+                {
+                    await _channel.BasicNackAsync(
+                        ea.DeliveryTag,
+                        multiple: false,
+                        requeue: true,
+                        cancellationToken: stoppingToken);
+                }
             }
         };
 
@@ -128,24 +176,41 @@ public sealed class RabbitMqProjectionConsumer : BackgroundService
             consumer: consumer,
             cancellationToken: stoppingToken);
 
-        _logger.LogInformation("Projection consumer started");
+        _logger.LogInformation("Projection consumer started. Queue={Queue}, Exchange={Exchange}", _options.Queue, _options.Exchange);
 
-        await Task.Delay(Timeout.Infinite, stoppingToken);
+        await Task.Delay(Timeout.InfiniteTimeSpan, stoppingToken);
     }
 
-    public override async Task StopAsync(CancellationToken cancellationToken)
+    private async Task DisposeRabbitMqAsync()
     {
-        if (_channel is not null && !string.IsNullOrWhiteSpace(_consumerTag))
+        if (_channel is not null)
         {
-            await _channel.BasicCancelAsync(_consumerTag, noWait: false, cancellationToken);
+            try
+            {
+                await _channel.DisposeAsync();
+            }
+            catch
+            {
+                // ignored
+            }
+
+            _channel = null;
         }
 
-        if (_channel is not null)
-            await _channel.DisposeAsync();
-
         if (_connection is not null)
-            await _connection.DisposeAsync();
+        {
+            try
+            {
+                await _connection.DisposeAsync();
+            }
+            catch
+            {
+                // ignored
+            }
 
-        await base.StopAsync(cancellationToken);
+            _connection = null;
+        }
+
+        _consumerTag = string.Empty;
     }
 }

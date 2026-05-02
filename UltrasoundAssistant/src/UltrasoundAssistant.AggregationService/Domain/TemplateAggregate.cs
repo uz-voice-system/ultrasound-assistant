@@ -1,5 +1,6 @@
 using System.Text.Json;
 using UltrasoundAssistant.AggregationService.Infrastructure.Persistence;
+using UltrasoundAssistant.Contracts.Entity.Templates;
 using UltrasoundAssistant.Contracts.Events.TemplateEvent;
 
 namespace UltrasoundAssistant.AggregationService.Domain;
@@ -7,64 +8,54 @@ namespace UltrasoundAssistant.AggregationService.Domain;
 public sealed class TemplateAggregate
 {
     public Guid Id { get; private set; }
+
     public bool Exists { get; private set; }
+
     public bool IsDeleted { get; private set; }
+
     public int Version { get; private set; }
 
     public string Name { get; private set; } = string.Empty;
 
-    // phrase -> fieldName
-    public Dictionary<string, string> Keywords { get; private set; } =
-        new(StringComparer.OrdinalIgnoreCase);
+    public List<TemplateBlockEventDto> Blocks { get; private set; } = [];
 
-    public TemplateCreatedEvent Create(Guid templateId, string name, Dictionary<string, string> keywords)
+    public TemplateCreatedEvent Create(
+        Guid templateId,
+        string name,
+        IReadOnlyList<TemplateBlockEventDto> blocks)
     {
-        if (templateId == Guid.Empty)
-            throw new DomainException("Template id is required");
-
         if (Exists)
             throw new DomainException("Template already exists");
-
-        if (string.IsNullOrWhiteSpace(name))
-            throw new DomainException("Template name is required");
-
-        if (keywords is null || keywords.Count == 0)
-            throw new DomainException("Template keywords are required");
-
-        ValidateKeywords(keywords);
 
         return new TemplateCreatedEvent
         {
             TemplateId = templateId,
             Name = name.Trim(),
-            Keywords = new Dictionary<string, string>(keywords, StringComparer.OrdinalIgnoreCase),
+            Blocks = CloneBlocks(blocks),
             Version = Version + 1
         };
     }
 
-    public TemplateUpdatedEvent Update(string? name, Dictionary<string, string>? keywords)
+    public TemplateUpdatedEvent Update(
+        string? name,
+        IReadOnlyList<TemplateBlockEventDto>? blocks)
     {
         if (!Exists || IsDeleted)
             throw new DomainException("Template not found");
 
-        var nextName = string.IsNullOrWhiteSpace(name) ? Name : name.Trim();
-        var nextKeywords = keywords is null || keywords.Count == 0
-            ? new Dictionary<string, string>(Keywords, StringComparer.OrdinalIgnoreCase)
-            : new Dictionary<string, string>(keywords, StringComparer.OrdinalIgnoreCase);
+        var nextName = string.IsNullOrWhiteSpace(name)
+            ? Name
+            : name.Trim();
 
-        if (string.IsNullOrWhiteSpace(nextName))
-            throw new DomainException("Template name is required");
-
-        if (nextKeywords.Count == 0)
-            throw new DomainException("Template keywords are required");
-
-        ValidateKeywords(nextKeywords);
+        var nextBlocks = blocks is null
+            ? CloneBlocks(Blocks)
+            : CloneBlocks(blocks);
 
         return new TemplateUpdatedEvent
         {
             TemplateId = Id,
             Name = nextName,
-            Keywords = nextKeywords,
+            Blocks = nextBlocks,
             Version = Version + 1
         };
     }
@@ -95,10 +86,14 @@ public sealed class TemplateAggregate
         {
             case nameof(TemplateCreatedEvent):
                 {
-                    var e = JsonSerializer.Deserialize<TemplateCreatedEvent>(record.Payload, JsonDefaults.Web)!;
+                    var e = JsonSerializer.Deserialize<TemplateCreatedEvent>(
+                                record.Payload,
+                                JsonDefaults.Web)
+                            ?? throw new InvalidOperationException("Invalid TemplateCreatedEvent payload");
+
                     Id = e.TemplateId;
                     Name = e.Name;
-                    Keywords = new Dictionary<string, string>(e.Keywords, StringComparer.OrdinalIgnoreCase);
+                    Blocks = CloneBlocks(e.Blocks);
                     Exists = true;
                     IsDeleted = false;
                     Version = e.Version;
@@ -107,18 +102,29 @@ public sealed class TemplateAggregate
 
             case nameof(TemplateUpdatedEvent):
                 {
-                    var e = JsonSerializer.Deserialize<TemplateUpdatedEvent>(record.Payload, JsonDefaults.Web)!;
-                    Name = string.IsNullOrWhiteSpace(e.Name) ? Name : e.Name;
-                    Keywords = e.Keywords is null || e.Keywords.Count == 0
-                        ? Keywords
-                        : new Dictionary<string, string>(e.Keywords, StringComparer.OrdinalIgnoreCase);
+                    var e = JsonSerializer.Deserialize<TemplateUpdatedEvent>(
+                                record.Payload,
+                                JsonDefaults.Web)
+                            ?? throw new InvalidOperationException("Invalid TemplateUpdatedEvent payload");
+
+                    Name = string.IsNullOrWhiteSpace(e.Name)
+                        ? Name
+                        : e.Name;
+
+                    if (e.Blocks is not null)
+                        Blocks = CloneBlocks(e.Blocks);
+
                     Version = e.Version;
                     break;
                 }
 
             case nameof(TemplateDeletedEvent):
                 {
-                    var e = JsonSerializer.Deserialize<TemplateDeletedEvent>(record.Payload, JsonDefaults.Web)!;
+                    var e = JsonSerializer.Deserialize<TemplateDeletedEvent>(
+                                record.Payload,
+                                JsonDefaults.Web)
+                            ?? throw new InvalidOperationException("Invalid TemplateDeletedEvent payload");
+
                     IsDeleted = true;
                     Version = e.Version;
                     break;
@@ -126,15 +132,52 @@ public sealed class TemplateAggregate
         }
     }
 
-    private static void ValidateKeywords(Dictionary<string, string> keywords)
+    private static List<TemplateBlockEventDto> CloneBlocks(
+        IReadOnlyList<TemplateBlockEventDto> blocks)
     {
-        foreach (var pair in keywords)
-        {
-            if (string.IsNullOrWhiteSpace(pair.Key))
-                throw new DomainException("Keyword phrase cannot be empty");
-
-            if (string.IsNullOrWhiteSpace(pair.Value))
-                throw new DomainException("Keyword target field cannot be empty");
-        }
+        return blocks
+            .Select(block => new TemplateBlockEventDto
+            {
+                Id = block.Id,
+                Name = block.Name.Trim(),
+                Position = block.Position,
+                DefaultFieldName = string.IsNullOrWhiteSpace(block.DefaultFieldName)
+                    ? null
+                    : block.DefaultFieldName.Trim(),
+                Phrases = block.Phrases
+                    .Where(x => !string.IsNullOrWhiteSpace(x))
+                    .Select(x => x.Trim())
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList(),
+                Fields = block.Fields
+                    .Select(field => new TemplateFieldEventDto
+                    {
+                        Id = field.Id,
+                        FieldName = field.FieldName.Trim(),
+                        DisplayName = field.DisplayName.Trim(),
+                        Position = field.Position,
+                        Type = field.Type,
+                        Phrases = field.Phrases
+                            .Where(x => !string.IsNullOrWhiteSpace(x))
+                            .Select(x => x.Trim())
+                            .Distinct(StringComparer.OrdinalIgnoreCase)
+                            .ToList(),
+                        Norm = field.Norm is null
+                            ? null
+                            : new FieldNormDto
+                            {
+                                Min = field.Norm.Min,
+                                Max = field.Norm.Max,
+                                Unit = string.IsNullOrWhiteSpace(field.Norm.Unit)
+                                    ? null
+                                    : field.Norm.Unit.Trim(),
+                                NormalText = string.IsNullOrWhiteSpace(field.Norm.NormalText)
+                                    ? null
+                                    : field.Norm.NormalText.Trim()
+                            }
+                    })
+                    .ToList()
+            })
+            .ToList();
     }
 }

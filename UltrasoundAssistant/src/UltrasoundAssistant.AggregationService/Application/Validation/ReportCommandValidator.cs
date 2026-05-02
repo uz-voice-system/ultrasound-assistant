@@ -6,9 +6,6 @@ public static class ReportCommandValidator
 {
     public static void Validate(CreateReportCommand command)
     {
-        if (command.CommandId == Guid.Empty)
-            throw new ArgumentException("CommandId is required");
-
         if (command.ReportId == Guid.Empty)
             throw new ArgumentException("ReportId is required");
 
@@ -24,9 +21,6 @@ public static class ReportCommandValidator
 
     public static void Validate(UpdateReportFieldCommand command)
     {
-        if (command.CommandId == Guid.Empty)
-            throw new ArgumentException("CommandId is required");
-
         if (command.ReportId == Guid.Empty)
             throw new ArgumentException("ReportId is required");
 
@@ -40,26 +34,8 @@ public static class ReportCommandValidator
             throw new ArgumentException("Value is required");
     }
 
-    public static void Validate(ProcessVoiceDataCommand command)
-    {
-        if (command.CommandId == Guid.Empty)
-            throw new ArgumentException("CommandId is required");
-
-        if (command.ReportId == Guid.Empty)
-            throw new ArgumentException("ReportId is required");
-
-        if (command.ExpectedVersion < 0)
-            throw new ArgumentException("ExpectedVersion cannot be negative");
-
-        if (string.IsNullOrWhiteSpace(command.RecognizedText))
-            throw new ArgumentException("RecognizedText is required");
-    }
-
     public static void Validate(CompleteReportCommand command)
     {
-        if (command.CommandId == Guid.Empty)
-            throw new ArgumentException("CommandId is required");
-
         if (command.ReportId == Guid.Empty)
             throw new ArgumentException("ReportId is required");
 
@@ -69,9 +45,6 @@ public static class ReportCommandValidator
 
     public static void Validate(DeleteReportCommand command)
     {
-        if (command.CommandId == Guid.Empty)
-            throw new ArgumentException("CommandId is required");
-
         if (command.ReportId == Guid.Empty)
             throw new ArgumentException("ReportId is required");
 

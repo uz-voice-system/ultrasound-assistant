@@ -39,10 +39,17 @@ public sealed class TemplatesController : GatewayControllerBase
         return ProxyJson(result.StatusCode, result.Content);
     }
 
-    [HttpGet]
-    public async Task<IActionResult> List(CancellationToken ct)
+    [HttpGet("search")]
+    public async Task<IActionResult> SearchForDoctor(CancellationToken ct)
     {
-        var result = await _projectionClient.GetAsync("/api/read/templates", ct);
+        var result = await _projectionClient.GetAsync("/api/read/templates/search" + Request.QueryString, ct);
+        return ProxyJson(result.StatusCode, result.Content);
+    }
+
+    [HttpGet("search-admin")]
+    public async Task<IActionResult> SearchForAdmin(CancellationToken ct)
+    {
+        var result = await _projectionClient.GetAsync("/api/read/templates/search-admin" + Request.QueryString, ct);
         return ProxyJson(result.StatusCode, result.Content);
     }
 

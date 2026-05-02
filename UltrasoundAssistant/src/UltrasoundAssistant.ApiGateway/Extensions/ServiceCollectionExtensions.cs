@@ -11,10 +11,16 @@ public static class ServiceCollectionExtensions
         services.Configure<DemoUsersOptions>(configuration.GetSection("DemoUsers"));
 
         var aggregationBaseUrl = configuration["Services:AggregationBaseUrl"]
-                                 ?? throw new InvalidOperationException("Services:AggregationBaseUrl is missing");
+            ?? throw new InvalidOperationException("Services:AggregationBaseUrl is missing");
 
         var projectionBaseUrl = configuration["Services:ProjectionBaseUrl"]
-                                ?? throw new InvalidOperationException("Services:ProjectionBaseUrl is missing");
+            ?? throw new InvalidOperationException("Services:ProjectionBaseUrl is missing");
+
+        var voiceProcessingBaseUrl = configuration["Services:VoiceProcessingBaseUrl"]
+            ?? throw new InvalidOperationException("Services:VoiceProcessingBaseUrl is missing");
+
+        var reportGeneratorBaseUrl = configuration["Services:ReportGeneratorBaseUrl"]
+            ?? throw new InvalidOperationException("Services:ReportGeneratorBaseUrl is missing");
 
         services.AddHttpClient<AggregationApiClient>(client =>
         {
@@ -24,6 +30,16 @@ public static class ServiceCollectionExtensions
         services.AddHttpClient<ProjectionApiClient>(client =>
         {
             client.BaseAddress = new Uri(projectionBaseUrl);
+        });
+
+        services.AddHttpClient<VoiceProcessingApiClient>(client =>
+        {
+            client.BaseAddress = new Uri(voiceProcessingBaseUrl);
+        });
+
+        services.AddHttpClient<ReportGeneratorClient>(client =>
+        {
+            client.BaseAddress = new Uri(reportGeneratorBaseUrl);
         });
 
         services.AddSingleton<AuthService>();

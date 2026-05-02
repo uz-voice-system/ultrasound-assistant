@@ -1,7 +1,7 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using UltrasoundAssistant.Contracts.Reports;
+using UltrasoundAssistant.Contracts.Reads.Reports;
 using UltrasoundAssistant.ProjectionService.Infrastructure.Persistence;
 
 namespace UltrasoundAssistant.ProjectionService.Controllers;

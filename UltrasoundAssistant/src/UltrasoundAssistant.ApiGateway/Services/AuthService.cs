@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Options;
 using UltrasoundAssistant.ApiGateway.Options;
+using UltrasoundAssistant.Contracts.Enums;
 
 namespace UltrasoundAssistant.ApiGateway.Services;
 
@@ -37,6 +38,6 @@ public sealed class LoginResult
     public Guid UserId { get; set; }
     public string Login { get; set; } = string.Empty;
     public string FullName { get; set; } = string.Empty;
-    public string Role { get; set; } = string.Empty;
+    public UserRole Role { get; set; }
     public string Token { get; set; } = string.Empty;
 }

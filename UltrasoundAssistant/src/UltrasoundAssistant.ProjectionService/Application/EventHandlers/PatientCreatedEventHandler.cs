@@ -31,14 +31,13 @@ public sealed class PatientCreatedEventHandler : IIntegrationEventHandler
         if (string.IsNullOrWhiteSpace(@event.FullName))
         {
             _logger.LogWarning(
-                "Skipping patient.created because FullName is empty. Payload: {Payload}",
-                payload);
+                "Skipping patient.created because FullName is empty. Payload: {Payload}", payload);
 
             return;
         }
 
         var existing = await _dbContext.Patients
-            .FirstOrDefaultAsync(x => x.Id == @event.Id, cancellationToken);
+            .FirstOrDefaultAsync(x => x.Id == @event.PatientId, cancellationToken);
 
         if (existing is not null)
         {
@@ -46,7 +45,7 @@ public sealed class PatientCreatedEventHandler : IIntegrationEventHandler
                 return;
 
             existing.FullName = @event.FullName;
-            existing.BirthDate = @event.BirthDate;
+            existing.BirthDate = DateTimeHelper.EnsureUtc(@event.BirthDate);
             existing.Gender = @event.Gender;
             existing.IsDeleted = false;
             existing.Version = @event.Version;
@@ -55,9 +54,9 @@ public sealed class PatientCreatedEventHandler : IIntegrationEventHandler
         {
             _dbContext.Patients.Add(new PatientReadModel
             {
-                Id = @event.Id,
+                Id = @event.PatientId,
                 FullName = @event.FullName,
-                BirthDate = @event.BirthDate,
+                BirthDate = DateTimeHelper.EnsureUtc(@event.BirthDate),
                 Gender = @event.Gender,
                 IsDeleted = false,
                 Version = @event.Version

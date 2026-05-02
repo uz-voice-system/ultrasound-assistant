@@ -3,60 +3,69 @@ using System.Text.Json;
 using UltrasoundAssistant.Contracts.Events.TemplateEvent;
 using UltrasoundAssistant.ProjectionService.Application.Abstractions;
 using UltrasoundAssistant.ProjectionService.Application.Common;
+using UltrasoundAssistant.ProjectionService.Application.Mapping;
 using UltrasoundAssistant.ProjectionService.Infrastructure.Persistence;
-using UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Entities;
+using UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Entities.Templates;
 
 namespace UltrasoundAssistant.ProjectionService.Application.EventHandlers;
 
 public sealed class TemplateCreatedEventHandler : IIntegrationEventHandler
 {
     private readonly ProjectionDbContext _dbContext;
+    private readonly TemplateProjectionMapper _mapper;
 
     public string RoutingKey => "template.created";
 
-    public TemplateCreatedEventHandler(ProjectionDbContext dbContext)
+    public TemplateCreatedEventHandler(ProjectionDbContext dbContext, TemplateProjectionMapper mapper)
     {
         _dbContext = dbContext;
+        _mapper = mapper;
     }
 
     public async Task HandleAsync(string payload, CancellationToken cancellationToken)
     {
         var @event = JsonSerializer.Deserialize<TemplateCreatedEvent>(payload, JsonDefaults.Web)
-                     ?? throw new InvalidOperationException("Invalid TemplateCreatedEvent payload");
+            ?? throw new InvalidOperationException("Invalid TemplateCreatedEvent payload");
 
-        var existing = await _dbContext.Templates
-            .Include(x => x.Keywords)
-            .FirstOrDefaultAsync(x => x.Id == @event.TemplateId, cancellationToken);
+        var template = await LoadTemplateAsync(@event.TemplateId, cancellationToken);
 
-        if (existing is not null && @event.Version <= existing.Version)
+        if (template is not null && @event.Version <= template.Version)
             return;
 
-        if (existing is null)
+        await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
+
+        if (template is null)
         {
-            existing = new TemplateReadModel
+            template = new TemplateReadModel
             {
                 Id = @event.TemplateId
             };
-            _dbContext.Templates.Add(existing);
+
+            _dbContext.Templates.Add(template);
         }
         else
         {
-            _dbContext.TemplateKeywords.RemoveRange(existing.Keywords);
+            _dbContext.TemplateBlocks.RemoveRange(template.Blocks);
+            await _dbContext.SaveChangesAsync(cancellationToken);
         }
 
-        existing.Name = @event.Name;
-        existing.StructureJson = JsonSerializer.Serialize(@event.Keywords.Keys.OrderBy(x => x));
-        existing.IsDeleted = false;
-        existing.Version = @event.Version;
-        existing.Keywords = @event.Keywords
-            .Select(kvp => new TemplateKeywordReadModel
-            {
-                TemplateId = @event.TemplateId,
-                Phrase = kvp.Key,
-                TargetField = kvp.Value
-            })
-            .ToList();
+        template.Name = @event.Name;
+        template.IsDeleted = false;
+        template.Version = @event.Version;
+        template.Blocks = _mapper.MapBlocks(@event.TemplateId, @event.Blocks);
 
         await _dbContext.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+    }
+
+    private async Task<TemplateReadModel?> LoadTemplateAsync(Guid templateId, CancellationToken cancellationToken)
+    {
+        return await _dbContext.Templates
+            .Include(t => t.Blocks)
+                .ThenInclude(b => b.Phrases)
+            .Include(t => t.Blocks)
+                .ThenInclude(b => b.Fields)
+                    .ThenInclude(f => f.Phrases)
+            .FirstOrDefaultAsync(t => t.Id == templateId, cancellationToken);
     }
 }

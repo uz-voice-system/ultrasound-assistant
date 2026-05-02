@@ -1,0 +1,6 @@
+
+src/UltrasoundAssistant.VoiceProcessingService/models/*.bin
+
+# Whisper / speech recognition models
+src/UltrasoundAssistant.VoiceProcessingService/models/*.bin
+src/UltrasoundAssistant.VoiceProcessingService/models/*.gguf

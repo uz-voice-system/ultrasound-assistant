@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using UltrasoundAssistant.Contracts.Patients;
+using UltrasoundAssistant.Contracts.Reads.Patients;
 using UltrasoundAssistant.ProjectionService.Infrastructure.Persistence;
 
 namespace UltrasoundAssistant.ProjectionService.Controllers;

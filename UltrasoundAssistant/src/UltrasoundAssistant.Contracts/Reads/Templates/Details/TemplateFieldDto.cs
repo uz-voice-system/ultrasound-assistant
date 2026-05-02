@@ -1,0 +1,44 @@
+﻿using UltrasoundAssistant.Contracts.Entity.Templates;
+
+namespace UltrasoundAssistant.Contracts.Reads.Templates.Details;
+
+/// <summary>
+/// Поле блока шаблона
+/// </summary>
+public sealed class TemplateFieldDto
+{
+    /// <summary>
+    /// Идентификатор поля
+    /// </summary>
+    public Guid Id { get; set; }
+
+    /// <summary>
+    /// Техническое имя поля
+    /// </summary>
+    public string FieldName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Отображаемое название поля
+    /// </summary>
+    public string DisplayName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Порядок отображения поля
+    /// </summary>
+    public int Position { get; set; }
+
+    /// <summary>
+    /// Фразы для определения поля
+    /// </summary>
+    public List<string> Phrases { get; set; } = [];
+
+    /// <summary>
+    /// Тип значения поля
+    /// </summary>
+    public TemplateFieldType Type { get; set; } = TemplateFieldType.Text;
+
+    /// <summary>
+    /// Норма значения поля
+    /// </summary>
+    public FieldNormDto? Norm { get; set; }
+}

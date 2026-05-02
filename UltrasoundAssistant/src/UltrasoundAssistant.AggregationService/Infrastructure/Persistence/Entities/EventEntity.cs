@@ -2,7 +2,7 @@
 
 public sealed class EventEntity
 {
-    public long Id { get; set; }
+    public long EventId { get; set; }
 
     public string AggregateType { get; set; } = string.Empty;
 

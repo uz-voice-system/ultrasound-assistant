@@ -7,4 +7,6 @@ public sealed class ServiceEndpointsOptions
     public string AggregationBaseUrl { get; set; } = "http://localhost:5002";
 
     public string ProjectionBaseUrl { get; set; } = "http://localhost:5001";
+
+    public string ReportGeneratorBaseUrl { get; set; } = "http://localhost:5004";
 }

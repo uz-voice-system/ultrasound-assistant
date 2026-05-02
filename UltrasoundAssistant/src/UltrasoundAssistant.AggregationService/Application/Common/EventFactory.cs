@@ -10,13 +10,11 @@ public static class EventFactory
     public static EventRecord Create<TEvent>(TEvent @event, string routingKey)
     {
         var eventId = (Guid)(typeof(TEvent).GetProperty("EventId")?.GetValue(@event)
-                     ?? throw new InvalidOperationException("EventId property is missing"));
+            ?? throw new InvalidOperationException("EventId property is missing"));
 
-        var createdAt = (DateTime)(typeof(TEvent).GetProperty("CreatedAt")?.GetValue(@event)
-                        ?? DateTime.UtcNow);
+        var createdAt = (DateTime)(typeof(TEvent).GetProperty("CreatedAt")?.GetValue(@event) ?? DateTime.UtcNow);
 
-        var version = (int)(typeof(TEvent).GetProperty("Version")?.GetValue(@event)
-                     ?? 0);
+        var version = (int)(typeof(TEvent).GetProperty("Version")?.GetValue(@event) ?? 0);
 
         return new EventRecord
         {

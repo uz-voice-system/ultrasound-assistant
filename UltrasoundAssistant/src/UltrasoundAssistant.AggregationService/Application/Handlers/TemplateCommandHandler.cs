@@ -8,37 +8,43 @@ namespace UltrasoundAssistant.AggregationService.Application.Handlers;
 
 public sealed class TemplateCommandHandler : CommandHandlerBase
 {
+    private const string AggregateType = "template";
+    private const string TemplateCreatedRoutingKey = "template.created";
+    private const string TemplateUpdatedRoutingKey = "template.updated";
+    private const string TemplateDeletedRoutingKey = "template.deleted";
+
     private readonly IEventStore _eventStore;
 
     public TemplateCommandHandler(
-        ICommandDeduplicationStore deduplicationStore,
         IEventStore eventStore,
         IIntegrationEventPublisher publisher,
         IUnitOfWork unitOfWork,
         ILogger<TemplateCommandHandler> logger)
-        : base(deduplicationStore, eventStore, publisher, unitOfWork, logger)
+        : base(eventStore, publisher, unitOfWork, logger)
     {
         _eventStore = eventStore;
     }
 
-    public async Task<CommandResult> CreateAsync(CreateTemplateCommand command, CancellationToken ct)
+    public async Task<CommandResult> CreateAsync(
+        CreateTemplateCommand command,
+        CancellationToken ct)
     {
         try
         {
             TemplateCommandValidator.Validate(command);
 
-            var history = await _eventStore.LoadAggregateEventsAsync("template", command.TemplateId, ct);
-            var aggregate = new TemplateAggregate();
-            aggregate.LoadFrom(history);
+            var aggregate = await LoadAggregateAsync(command.TemplateId, ct);
 
-            var @event = aggregate.Create(command.TemplateId, command.Name, command.Keywords);
+            var @event = aggregate.Create(
+                command.TemplateId,
+                command.Name,
+                command.Blocks);
 
             return await SaveAndPublishAsync(
-                command.CommandId,
-                "template",
+                AggregateType,
                 command.TemplateId,
                 aggregate.Version,
-                [EventFactory.Create(@event, "template.created")],
+                [EventFactory.Create(@event, TemplateCreatedRoutingKey)],
                 ct);
         }
         catch (ArgumentException ex)
@@ -51,30 +57,34 @@ public sealed class TemplateCommandHandler : CommandHandlerBase
         }
     }
 
-    public async Task<CommandResult> UpdateAsync(UpdateTemplateCommand command, CancellationToken ct)
+    public async Task<CommandResult> UpdateAsync(
+        UpdateTemplateCommand command,
+        CancellationToken ct)
     {
         try
         {
             TemplateCommandValidator.Validate(command);
 
-            var history = await _eventStore.LoadAggregateEventsAsync("template", command.TemplateId, ct);
-            var aggregate = new TemplateAggregate();
-            aggregate.LoadFrom(history);
+            var aggregate = await LoadAggregateAsync(command.TemplateId, ct);
 
             if (!aggregate.Exists || aggregate.IsDeleted)
                 return CommandResult.NotFound("Template not found");
 
             if (command.ExpectedVersion != aggregate.Version)
-                return CommandResult.Conflict($"Concurrency conflict. Expected {command.ExpectedVersion}, actual {aggregate.Version}");
+            {
+                return CommandResult.Conflict(
+                    $"Concurrency conflict. Expected {command.ExpectedVersion}, actual {aggregate.Version}");
+            }
 
-            var @event = aggregate.Update(command.Name, command.Keywords);
+            var @event = aggregate.Update(
+                command.Name,
+                command.Blocks);
 
             return await SaveAndPublishAsync(
-                command.CommandId,
-                "template",
+                AggregateType,
                 command.TemplateId,
                 aggregate.Version,
-                [EventFactory.Create(@event, "template.updated")],
+                [EventFactory.Create(@event, TemplateUpdatedRoutingKey)],
                 ct);
         }
         catch (ArgumentException ex)
@@ -87,30 +97,32 @@ public sealed class TemplateCommandHandler : CommandHandlerBase
         }
     }
 
-    public async Task<CommandResult> DeleteAsync(DeleteTemplateCommand command, CancellationToken ct)
+    public async Task<CommandResult> DeleteAsync(
+        DeleteTemplateCommand command,
+        CancellationToken ct)
     {
         try
         {
             TemplateCommandValidator.Validate(command);
 
-            var history = await _eventStore.LoadAggregateEventsAsync("template", command.TemplateId, ct);
-            var aggregate = new TemplateAggregate();
-            aggregate.LoadFrom(history);
+            var aggregate = await LoadAggregateAsync(command.TemplateId, ct);
 
             if (!aggregate.Exists || aggregate.IsDeleted)
                 return CommandResult.NotFound("Template not found");
 
             if (command.ExpectedVersion != aggregate.Version)
-                return CommandResult.Conflict($"Concurrency conflict. Expected {command.ExpectedVersion}, actual {aggregate.Version}");
+            {
+                return CommandResult.Conflict(
+                    $"Concurrency conflict. Expected {command.ExpectedVersion}, actual {aggregate.Version}");
+            }
 
             var @event = aggregate.Delete();
 
             return await SaveAndPublishAsync(
-                command.CommandId,
-                "template",
+                AggregateType,
                 command.TemplateId,
                 aggregate.Version,
-                [EventFactory.Create(@event, "template.deleted")],
+                [EventFactory.Create(@event, TemplateDeletedRoutingKey)],
                 ct);
         }
         catch (ArgumentException ex)
@@ -121,5 +133,20 @@ public sealed class TemplateCommandHandler : CommandHandlerBase
         {
             return CommandResult.BadRequest(ex.Message);
         }
+    }
+
+    private async Task<TemplateAggregate> LoadAggregateAsync(
+        Guid templateId,
+        CancellationToken ct)
+    {
+        var history = await _eventStore.LoadAggregateEventsAsync(
+            AggregateType,
+            templateId,
+            ct);
+
+        var aggregate = new TemplateAggregate();
+        aggregate.LoadFrom(history);
+
+        return aggregate;
     }
 }

@@ -1,9 +1,13 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using UltrasoundAssistant.ProjectionService.Application.Abstractions;
 using UltrasoundAssistant.ProjectionService.Application.EventHandlers;
+using UltrasoundAssistant.ProjectionService.Application.Mapping;
+using UltrasoundAssistant.ProjectionService.Application.Services;
 using UltrasoundAssistant.ProjectionService.Consumers;
+using UltrasoundAssistant.ProjectionService.Infrastructure.Abstractions;
 using UltrasoundAssistant.ProjectionService.Infrastructure.Messaging;
 using UltrasoundAssistant.ProjectionService.Infrastructure.Persistence;
+using UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Repositories;
 
 namespace UltrasoundAssistant.ProjectionService.Extensions;
 
@@ -27,6 +31,11 @@ public static class ServiceCollectionExtensions
 
     public static IServiceCollection AddProjectionApplication(this IServiceCollection services)
     {
+        services.AddSingleton<TemplateProjectionMapper>();
+
+        services.AddScoped<ITemplateReadRepository, TemplateReadRepository>();
+        services.AddScoped<ITemplateReadService, TemplateReadService>();
+
         services.AddScoped<IIntegrationEventHandler, PatientCreatedEventHandler>();
         services.AddScoped<IIntegrationEventHandler, PatientUpdatedEventHandler>();
         services.AddScoped<IIntegrationEventHandler, PatientDeactivatedEventHandler>();

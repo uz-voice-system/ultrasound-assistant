@@ -6,7 +6,7 @@ namespace UltrasoundAssistant.AggregationService.Domain;
 
 public sealed class PatientAggregate
 {
-    public Guid Id { get; private set; }
+    public Guid PatientId { get; private set; }
     public bool Exists { get; private set; }
     public bool IsActive { get; private set; }
     public int Version { get; private set; }
@@ -15,9 +15,9 @@ public sealed class PatientAggregate
     public DateTime BirthDate { get; private set; }
     public string? Gender { get; private set; }
 
-    public PatientCreatedEvent Create(Guid id, string fullName, DateTime birthDate, string? gender)
+    public PatientCreatedEvent Create(Guid patientId, string fullName, DateTime birthDate, string? gender)
     {
-        if (id == Guid.Empty)
+        if (patientId == Guid.Empty)
             throw new DomainException("Patient id is required");
 
         if (Exists)
@@ -28,7 +28,7 @@ public sealed class PatientAggregate
 
         return new PatientCreatedEvent
         {
-            Id = id,
+            PatientId = patientId,
             FullName = fullName.Trim(),
             BirthDate = birthDate,
             Gender = string.IsNullOrWhiteSpace(gender) ? null : gender.Trim(),
@@ -50,7 +50,7 @@ public sealed class PatientAggregate
 
         return new PatientUpdatedEvent
         {
-            PatientId = Id,
+            PatientId = PatientId,
             FullName = nextFullName,
             BirthDate = nextBirthDate,
             Gender = nextGender,
@@ -63,7 +63,7 @@ public sealed class PatientAggregate
         if (!Exists || !IsActive)
             throw new DomainException("Patient not found or already inactive");
 
-        if (patientId != Id)
+        if (patientId != PatientId)
             throw new DomainException("Patient id mismatch");
 
         return new PatientDeactivatedEvent
@@ -90,7 +90,7 @@ public sealed class PatientAggregate
             case nameof(PatientCreatedEvent):
                 {
                     var e = JsonSerializer.Deserialize<PatientCreatedEvent>(record.Payload, JsonDefaults.Web)!;
-                    Id = e.Id;
+                    PatientId = e.PatientId;
                     FullName = e.FullName;
                     BirthDate = e.BirthDate;
                     Gender = e.Gender;

@@ -1,6 +1,4 @@
-﻿
-
-namespace UltrasoundAssistant.Contracts.Events.Abstraction
+﻿namespace UltrasoundAssistant.Contracts.Events.Abstraction
 {
     /// <summary>
     /// Базовый интерфейс доменного события.

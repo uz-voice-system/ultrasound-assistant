@@ -33,15 +33,6 @@ public sealed class ReportController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [HttpPost("voice")]
-    public async Task<IActionResult> ProcessVoice(
-        [FromBody] ProcessVoiceDataCommand command,
-        CancellationToken ct)
-    {
-        var result = await _handler.ProcessVoiceAsync(command, ct);
-        return StatusCode(result.StatusCode, result);
-    }
-
     [HttpPost("complete")]
     public async Task<IActionResult> Complete(
         [FromBody] CompleteReportCommand command,

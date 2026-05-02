@@ -24,11 +24,11 @@ namespace UltrasoundAssistant.AggregationService.Migrations
 
             modelBuilder.Entity("UltrasoundAssistant.AggregationService.Infrastructure.Persistence.Entities.EventEntity", b =>
                 {
-                    b.Property<long>("Id")
+                    b.Property<long>("EventId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bigint");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("EventId"));
 
                     b.Property<Guid>("AggregateId")
                         .HasColumnType("uuid");
@@ -58,7 +58,7 @@ namespace UltrasoundAssistant.AggregationService.Migrations
                     b.Property<int>("Version")
                         .HasColumnType("integer");
 
-                    b.HasKey("Id");
+                    b.HasKey("EventId");
 
                     b.HasIndex("AggregateType", "AggregateId");
 
@@ -66,20 +66,6 @@ namespace UltrasoundAssistant.AggregationService.Migrations
                         .IsUnique();
 
                     b.ToTable("events", (string)null);
-                });
-
-            modelBuilder.Entity("UltrasoundAssistant.AggregationService.Infrastructure.Persistence.Entities.ProcessedCommandEntity", b =>
-                {
-                    b.Property<Guid>("CommandId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("ProcessedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("CommandId");
-
-                    b.ToTable("processed_commands", (string)null);
                 });
 #pragma warning restore 612, 618
         }

@@ -17,7 +17,7 @@ namespace UltrasoundAssistant.ProjectionService.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.0")
+                .HasAnnotation("ProductVersion", "10.0.7")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -95,7 +95,7 @@ namespace UltrasoundAssistant.ProjectionService.Migrations
                     b.ToTable("reports", (string)null);
                 });
 
-            modelBuilder.Entity("UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Entities.TemplateKeywordReadModel", b =>
+            modelBuilder.Entity("UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Entities.Templates.TemplateBlockPhraseReadModel", b =>
                 {
                     b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
@@ -103,28 +103,126 @@ namespace UltrasoundAssistant.ProjectionService.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
+                    b.Property<Guid>("BlockId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Phrase")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BlockId", "Phrase")
+                        .IsUnique();
+
+                    b.ToTable("template_block_phrases", (string)null);
+                });
+
+            modelBuilder.Entity("UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Entities.Templates.TemplateBlockReadModel", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("DefaultFieldName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
-                    b.Property<string>("TargetField")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
+                    b.Property<int>("Position")
+                        .HasColumnType("integer");
 
                     b.Property<Guid>("TemplateId")
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("TemplateId", "Phrase")
-                        .IsUnique();
+                    b.HasIndex("TemplateId", "Name");
 
-                    b.ToTable("keywords", (string)null);
+                    b.HasIndex("TemplateId", "Position");
+
+                    b.ToTable("template_blocks", (string)null);
                 });
 
-            modelBuilder.Entity("UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Entities.TemplateReadModel", b =>
+            modelBuilder.Entity("UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Entities.Templates.TemplateFieldPhraseReadModel", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<Guid>("FieldId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Phrase")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FieldId", "Phrase")
+                        .IsUnique();
+
+                    b.ToTable("template_field_phrases", (string)null);
+                });
+
+            modelBuilder.Entity("UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Entities.Templates.TemplateFieldReadModel", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BlockId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("FieldName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<decimal?>("NormMax")
+                        .HasColumnType("numeric(10,2)");
+
+                    b.Property<decimal?>("NormMin")
+                        .HasColumnType("numeric(10,2)");
+
+                    b.Property<string>("NormNormalText")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("NormUnit")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BlockId", "FieldName")
+                        .IsUnique();
+
+                    b.HasIndex("BlockId", "Position");
+
+                    b.ToTable("template_fields", (string)null);
+                });
+
+            modelBuilder.Entity("UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Entities.Templates.TemplateReadModel", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -138,22 +236,31 @@ namespace UltrasoundAssistant.ProjectionService.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
-                    b.Property<string>("StructureJson")
-                        .IsRequired()
-                        .HasColumnType("text");
-
                     b.Property<int>("Version")
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Name");
+
                     b.ToTable("templates", (string)null);
                 });
 
-            modelBuilder.Entity("UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Entities.TemplateKeywordReadModel", b =>
+            modelBuilder.Entity("UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Entities.Templates.TemplateBlockPhraseReadModel", b =>
                 {
-                    b.HasOne("UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Entities.TemplateReadModel", "Template")
-                        .WithMany("Keywords")
+                    b.HasOne("UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Entities.Templates.TemplateBlockReadModel", "Block")
+                        .WithMany("Phrases")
+                        .HasForeignKey("BlockId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Block");
+                });
+
+            modelBuilder.Entity("UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Entities.Templates.TemplateBlockReadModel", b =>
+                {
+                    b.HasOne("UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Entities.Templates.TemplateReadModel", "Template")
+                        .WithMany("Blocks")
                         .HasForeignKey("TemplateId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -161,9 +268,43 @@ namespace UltrasoundAssistant.ProjectionService.Migrations
                     b.Navigation("Template");
                 });
 
-            modelBuilder.Entity("UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Entities.TemplateReadModel", b =>
+            modelBuilder.Entity("UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Entities.Templates.TemplateFieldPhraseReadModel", b =>
                 {
-                    b.Navigation("Keywords");
+                    b.HasOne("UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Entities.Templates.TemplateFieldReadModel", "Field")
+                        .WithMany("Phrases")
+                        .HasForeignKey("FieldId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Field");
+                });
+
+            modelBuilder.Entity("UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Entities.Templates.TemplateFieldReadModel", b =>
+                {
+                    b.HasOne("UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Entities.Templates.TemplateBlockReadModel", "Block")
+                        .WithMany("Fields")
+                        .HasForeignKey("BlockId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Block");
+                });
+
+            modelBuilder.Entity("UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Entities.Templates.TemplateBlockReadModel", b =>
+                {
+                    b.Navigation("Fields");
+
+                    b.Navigation("Phrases");
+                });
+
+            modelBuilder.Entity("UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Entities.Templates.TemplateFieldReadModel", b =>
+                {
+                    b.Navigation("Phrases");
+                });
+
+            modelBuilder.Entity("UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Entities.Templates.TemplateReadModel", b =>
+                {
+                    b.Navigation("Blocks");
                 });
 #pragma warning restore 612, 618
         }

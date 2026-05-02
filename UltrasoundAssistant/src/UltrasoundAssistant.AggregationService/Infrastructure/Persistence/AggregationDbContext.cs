@@ -11,12 +11,10 @@ public sealed class AggregationDbContext : DbContext
     }
 
     public DbSet<EventEntity> Events => Set<EventEntity>();
-    public DbSet<ProcessedCommandEntity> ProcessedCommands => Set<ProcessedCommandEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ConfigureEvents(modelBuilder);
-        ConfigureProcessedCommands(modelBuilder);
     }
 
     private static void ConfigureEvents(ModelBuilder modelBuilder)
@@ -25,7 +23,7 @@ public sealed class AggregationDbContext : DbContext
 
         entity.ToTable("events");
 
-        entity.HasKey(x => x.Id);
+        entity.HasKey(x => x.EventId);
 
         entity.Property(x => x.AggregateType)
             .IsRequired()
@@ -55,17 +53,5 @@ public sealed class AggregationDbContext : DbContext
             .IsUnique();
 
         entity.HasIndex(x => new { x.AggregateType, x.AggregateId });
-    }
-
-    private static void ConfigureProcessedCommands(ModelBuilder modelBuilder)
-    {
-        var entity = modelBuilder.Entity<ProcessedCommandEntity>();
-
-        entity.ToTable("processed_commands");
-
-        entity.HasKey(x => x.CommandId);
-
-        entity.Property(x => x.ProcessedAtUtc)
-            .IsRequired();
     }
 }
