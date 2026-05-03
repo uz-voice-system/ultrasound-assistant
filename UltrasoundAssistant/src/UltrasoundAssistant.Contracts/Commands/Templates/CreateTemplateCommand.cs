@@ -1,4 +1,4 @@
-using UltrasoundAssistant.Contracts.Events.TemplateEvent;
+using UltrasoundAssistant.Contracts.Entity.Templates;
 
 namespace UltrasoundAssistant.Contracts.Commands.Templates;
 
@@ -8,5 +8,5 @@ public sealed class CreateTemplateCommand
 
     public string Name { get; set; } = string.Empty;
 
-    public List<TemplateBlockEventDto> Blocks { get; set; } = [];
+    public List<TemplateBlockDto> Blocks { get; set; } = [];
 }

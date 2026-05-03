@@ -1,47 +1,55 @@
 ﻿using UltrasoundAssistant.Contracts.Enums;
 using UltrasoundAssistant.Contracts.Events.Abstraction;
 
-namespace UltrasoundAssistant.Contracts.Events.ReportEvent
+namespace UltrasoundAssistant.Contracts.Events.ReportEvent;
+
+/// <summary>
+/// Событие создания отчёта
+/// </summary>
+public sealed class ReportCreatedEvent : IEvent
 {
     /// <summary>
-    /// Событие создания отчёта.
+    /// Идентификатор события
     /// </summary>
-    public class ReportCreatedEvent : IEvent
-    {
-        /// <inheritdoc />
-        public Guid EventId { get; set; } = Guid.NewGuid();
+    public Guid EventId { get; set; } = Guid.NewGuid();
 
-        /// <inheritdoc />
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    /// <summary>
+    /// Дата создания события
+    /// </summary>
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-        /// <summary>
-        /// Идентификатор отчёта.
-        /// </summary>
-        public Guid Id { get; set; }
+    /// <summary>
+    /// Идентификатор отчёта
+    /// </summary>
+    public Guid ReportId { get; set; }
 
-        /// <summary>
-        /// Идентификатор пациента.
-        /// </summary>
-        public Guid PatientId { get; set; }
+    /// <summary>
+    /// Идентификатор записи на приём
+    /// </summary>
+    public Guid AppointmentId { get; set; }
 
-        /// <summary>
-        /// Идентификатор врача.
-        /// </summary>
-        public Guid DoctorId { get; set; }
+    /// <summary>
+    /// Статус отчёта
+    /// </summary>
+    public ReportStatus Status { get; set; }
 
-        /// <summary>
-        /// Идентификатор шаблона.
-        /// </summary>
-        public Guid TemplateId { get; set; }
+    /// <summary>
+    /// Содержимое отчёта в формате JSON
+    /// </summary>
+    public string ContentJson { get; set; } = "{}";
 
-        /// <summary>
-        /// Текущий статус отчёта.
-        /// </summary>
-        public ReportStatus Status { get; set; }
+    /// <summary>
+    /// Дата создания отчёта
+    /// </summary>
+    public DateTime CreatedAtUtc { get; set; }
 
-        /// <summary>
-        /// Версия агрегата.
-        /// </summary>
-        public int Version { get; set; } = 1;
-    }
+    /// <summary>
+    /// Дата обновления отчёта
+    /// </summary>
+    public DateTime UpdatedAtUtc { get; set; }
+
+    /// <summary>
+    /// Версия агрегата
+    /// </summary>
+    public int Version { get; set; }
 }

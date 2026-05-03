@@ -1,3 +1,5 @@
+using UltrasoundAssistant.Contracts.Entity.Templates;
+
 namespace UltrasoundAssistant.Contracts.Reads.Templates.Details
 {
     /// <summary>
@@ -14,6 +16,12 @@ namespace UltrasoundAssistant.Contracts.Reads.Templates.Details
         /// Название шаблона.
         /// </summary>
         public string Name { get; set; } = null!;
+
+        /// <summary>
+        /// Длительность приёма по умолчанию в минутах.
+        /// Используется при создании записи на приём.
+        /// </summary>
+        public int DefaultAppointmentDurationMinutes { get; set; }
 
         /// <summary>
         /// Признак удаления

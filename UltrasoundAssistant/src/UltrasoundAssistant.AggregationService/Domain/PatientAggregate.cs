@@ -58,7 +58,7 @@ public sealed class PatientAggregate
         };
     }
 
-    public PatientDeactivatedEvent Deactivate(Guid patientId, string? reason)
+    public PatientDeletedEvent Deactivate(Guid patientId, string? reason)
     {
         if (!Exists || !IsActive)
             throw new DomainException("Patient not found or already inactive");
@@ -66,7 +66,7 @@ public sealed class PatientAggregate
         if (patientId != PatientId)
             throw new DomainException("Patient id mismatch");
 
-        return new PatientDeactivatedEvent
+        return new PatientDeletedEvent
         {
             PatientId = patientId,
             Reason = string.IsNullOrWhiteSpace(reason) ? null : reason.Trim(),
@@ -110,9 +110,9 @@ public sealed class PatientAggregate
                     break;
                 }
 
-            case nameof(PatientDeactivatedEvent):
+            case nameof(PatientDeletedEvent):
                 {
-                    var e = JsonSerializer.Deserialize<PatientDeactivatedEvent>(record.Payload, JsonDefaults.Web)!;
+                    var e = JsonSerializer.Deserialize<PatientDeletedEvent>(record.Payload, JsonDefaults.Web)!;
                     IsActive = !e.IsDeleted;
                     Version = e.Version;
                     break;

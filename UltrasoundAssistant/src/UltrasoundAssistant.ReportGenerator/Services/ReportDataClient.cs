@@ -1,6 +1,6 @@
 ﻿using System.Net.Http.Json;
 using System.Text.Json;
-using UltrasoundAssistant.Contracts.Reads.Reports;
+using UltrasoundAssistant.Contracts.Reads.Reports.Details;
 using UltrasoundAssistant.ReportGenerator.Abstractions;
 
 namespace UltrasoundAssistant.ReportGenerator.Services;

@@ -1,4 +1,5 @@
-﻿using UltrasoundAssistant.Contracts.Reads.Templates.Details;
+﻿using UltrasoundAssistant.Contracts.Entity.Templates;
+using UltrasoundAssistant.Contracts.Reads.Templates.Details;
 using UltrasoundAssistant.VoiceProcessingService.Domain.Matching.Models;
 
 namespace UltrasoundAssistant.VoiceProcessingService.Domain.Matching.Keywords;

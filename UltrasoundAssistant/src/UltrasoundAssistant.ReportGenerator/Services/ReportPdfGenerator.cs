@@ -2,7 +2,7 @@
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
-using UltrasoundAssistant.Contracts.Reads.Reports;
+using UltrasoundAssistant.Contracts.Reads.Reports.Details;
 using UltrasoundAssistant.Contracts.Reads.Templates.Details;
 using UltrasoundAssistant.ReportGenerator.Abstractions;
 using UltrasoundAssistant.ReportGenerator.Options;

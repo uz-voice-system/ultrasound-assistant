@@ -16,6 +16,11 @@ public sealed class TemplateSummaryDto
     public string Name { get; set; } = string.Empty;
 
     /// <summary>
+    /// Длительность приёма по умолчанию в минутах.
+    /// </summary>
+    public int DefaultAppointmentDurationMinutes { get; set; }
+
+    /// <summary>
     /// Признак удаления
     /// </summary>
     public bool IsDeleted { get; set; }

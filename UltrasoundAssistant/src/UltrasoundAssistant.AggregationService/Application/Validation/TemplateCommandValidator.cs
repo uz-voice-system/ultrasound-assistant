@@ -1,7 +1,6 @@
 ﻿using System.Text.RegularExpressions;
 using UltrasoundAssistant.Contracts.Commands.Templates;
 using UltrasoundAssistant.Contracts.Entity.Templates;
-using UltrasoundAssistant.Contracts.Events.TemplateEvent;
 
 namespace UltrasoundAssistant.AggregationService.Application.Validation;
 
@@ -69,7 +68,7 @@ public static partial class TemplateCommandValidator
             throw new ArgumentException($"Template name length cannot exceed {MaxTemplateNameLength}");
     }
 
-    private static void ValidateBlocks(IReadOnlyList<TemplateBlockEventDto>? blocks)
+    private static void ValidateBlocks(IReadOnlyList<TemplateBlockDto>? blocks)
     {
         if (blocks is null || blocks.Count == 0)
             throw new ArgumentException("Template blocks are required");
@@ -96,7 +95,7 @@ public static partial class TemplateCommandValidator
     }
 
     private static void ValidateBlock(
-        TemplateBlockEventDto block,
+        TemplateBlockDto block,
         HashSet<Guid> blockIds,
         HashSet<string> blockNames,
         HashSet<int> blockPositions,
@@ -136,7 +135,7 @@ public static partial class TemplateCommandValidator
     }
 
     private static void ValidateBlockPhrases(
-        TemplateBlockEventDto block,
+        TemplateBlockDto block,
         Dictionary<string, string> blockPhrases)
     {
         if (block.Phrases is null)
@@ -163,7 +162,7 @@ public static partial class TemplateCommandValidator
     }
 
     private static void ValidateFields(
-        TemplateBlockEventDto block,
+        TemplateBlockDto block,
         HashSet<Guid> fieldIds,
         HashSet<string> globalFieldNames)
     {
@@ -183,8 +182,8 @@ public static partial class TemplateCommandValidator
     }
 
     private static void ValidateField(
-        TemplateBlockEventDto block,
-        TemplateFieldEventDto field,
+        TemplateBlockDto block,
+        TemplateFieldDto field,
         HashSet<Guid> fieldIds,
         HashSet<string> globalFieldNames,
         HashSet<int> fieldPositions,
@@ -235,8 +234,8 @@ public static partial class TemplateCommandValidator
     }
 
     private static void ValidateFieldSearchPhrases(
-        TemplateBlockEventDto block,
-        TemplateFieldEventDto field,
+        TemplateBlockDto block,
+        TemplateFieldDto field,
         Dictionary<string, string> fieldSearchPhrases)
     {
         AddFieldSearchPhrase(
@@ -250,9 +249,6 @@ public static partial class TemplateCommandValidator
 
         foreach (var phrase in field.Phrases)
         {
-            if (string.IsNullOrWhiteSpace(phrase))
-                throw new ArgumentException($"Field phrase cannot be empty: {field.FieldName}");
-
             AddFieldSearchPhrase(
                 block.Name,
                 field.FieldName,
@@ -262,26 +258,34 @@ public static partial class TemplateCommandValidator
     }
 
     private static void AddFieldSearchPhrase(
-        string blockName,
-        string fieldName,
-        string phrase,
-        Dictionary<string, string> fieldSearchPhrases)
+    string blockName,
+    string fieldName,
+    string phrase,
+    Dictionary<string, string> fieldSearchPhrases)
     {
         var normalizedPhrase = phrase.Trim();
+
+        if (string.IsNullOrWhiteSpace(normalizedPhrase))
+            throw new ArgumentException($"Field phrase cannot be empty: {fieldName}");
 
         if (normalizedPhrase.Length > MaxPhraseLength)
             throw new ArgumentException($"Field phrase length cannot exceed {MaxPhraseLength}: {normalizedPhrase}");
 
+        var normalizedFieldName = fieldName.Trim();
+
         if (fieldSearchPhrases.TryGetValue(normalizedPhrase, out var existingField))
         {
+            if (string.Equals(existingField, normalizedFieldName, StringComparison.OrdinalIgnoreCase))
+                return;
+
             throw new ArgumentException(
-                $"Duplicate field phrase '{normalizedPhrase}' in block '{blockName}' for fields '{existingField}' and '{fieldName}'");
+                $"Duplicate field phrase '{normalizedPhrase}' in block '{blockName}' for fields '{existingField}' and '{normalizedFieldName}'");
         }
 
-        fieldSearchPhrases.Add(normalizedPhrase, fieldName);
+        fieldSearchPhrases.Add(normalizedPhrase, normalizedFieldName);
     }
 
-    private static void ValidateDefaultField(TemplateBlockEventDto block)
+    private static void ValidateDefaultField(TemplateBlockDto block)
     {
         if (string.IsNullOrWhiteSpace(block.DefaultFieldName))
             return;
@@ -301,7 +305,7 @@ public static partial class TemplateCommandValidator
         }
     }
 
-    private static void ValidateNorm(TemplateFieldEventDto field)
+    private static void ValidateNorm(TemplateFieldDto field)
     {
         if (field.Norm is null)
             return;
@@ -336,7 +340,7 @@ public static partial class TemplateCommandValidator
         }
     }
 
-    private static void ValidateTextNorm(TemplateFieldEventDto field)
+    private static void ValidateTextNorm(TemplateFieldDto field)
     {
         var norm = field.Norm!;
 
@@ -350,7 +354,7 @@ public static partial class TemplateCommandValidator
             throw new ArgumentException($"Text norm value is required for field: {field.FieldName}");
     }
 
-    private static void ValidateNumberNorm(TemplateFieldEventDto field)
+    private static void ValidateNumberNorm(TemplateFieldDto field)
     {
         var norm = field.Norm!;
 
@@ -358,7 +362,7 @@ public static partial class TemplateCommandValidator
             throw new ArgumentException($"Numeric field cannot contain text norm: {field.FieldName}");
     }
 
-    private static void ValidateNumberWithUnitNorm(TemplateFieldEventDto field)
+    private static void ValidateNumberWithUnitNorm(TemplateFieldDto field)
     {
         var norm = field.Norm!;
 

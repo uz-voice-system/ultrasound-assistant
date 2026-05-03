@@ -1,6 +1,5 @@
 ﻿using System.Globalization;
 using UltrasoundAssistant.Contracts.Entity.Templates;
-using UltrasoundAssistant.Contracts.Reads.Templates.Details;
 using UltrasoundAssistant.Contracts.VoiceProcessing;
 using UltrasoundAssistant.VoiceProcessingService.Domain.Matching.Models;
 using UltrasoundAssistant.VoiceProcessingService.Domain.Matching.Numbers;

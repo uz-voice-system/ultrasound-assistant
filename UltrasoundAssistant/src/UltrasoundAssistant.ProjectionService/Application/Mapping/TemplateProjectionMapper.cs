@@ -1,7 +1,7 @@
 ﻿using UltrasoundAssistant.Contracts.Entity.Templates;
-using UltrasoundAssistant.Contracts.Events.TemplateEvent;
 using UltrasoundAssistant.Contracts.Reads.Templates.Admin;
 using UltrasoundAssistant.Contracts.Reads.Templates.Details;
+using UltrasoundAssistant.Contracts.Reads.Templates.Enums;
 using UltrasoundAssistant.Contracts.Reads.Templates.Search;
 using UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Entities.Templates;
 
@@ -9,7 +9,7 @@ namespace UltrasoundAssistant.ProjectionService.Application.Mapping;
 
 public sealed class TemplateProjectionMapper
 {
-    public List<TemplateBlockReadModel> MapBlocks(Guid templateId, IReadOnlyList<TemplateBlockEventDto> blocks)
+    public List<TemplateBlockReadModel> MapBlocks(Guid templateId, IReadOnlyList<TemplateBlockDto> blocks)
     {
         return blocks
             .OrderBy(x => x.Position)
@@ -47,6 +47,7 @@ public sealed class TemplateProjectionMapper
                             DisplayName = field.DisplayName,
                             Position = field.Position,
                             Type = field.Type,
+                            Role = field.Role,
                             NormMin = field.Norm?.Min,
                             NormMax = field.Norm?.Max,
                             NormUnit = field.Norm?.Unit,
@@ -79,6 +80,7 @@ public sealed class TemplateProjectionMapper
         {
             Id = template.Id,
             Name = template.Name,
+            DefaultAppointmentDurationMinutes = template.DefaultAppointmentDurationMinutes,
             IsDeleted = template.IsDeleted,
             Version = template.Version
         };
@@ -90,6 +92,7 @@ public sealed class TemplateProjectionMapper
         {
             Id = template.Id,
             Name = template.Name,
+            DefaultAppointmentDurationMinutes = template.DefaultAppointmentDurationMinutes,
             IsDeleted = template.IsDeleted,
             Version = template.Version,
             Blocks = template.Blocks
@@ -99,7 +102,9 @@ public sealed class TemplateProjectionMapper
         };
     }
 
-    public TemplateAdminSearchResultDto MapAdminSearchResult(TemplateReadModel template, TemplateAdminSearchRequest filter)
+    public TemplateAdminSearchResultDto MapAdminSearchResult(
+        TemplateReadModel template,
+        TemplateAdminSearchRequest filter)
     {
         return new TemplateAdminSearchResultDto
         {
@@ -136,6 +141,7 @@ public sealed class TemplateProjectionMapper
             DisplayName = field.DisplayName,
             Position = field.Position,
             Type = field.Type,
+            Role = field.Role,
             Phrases = field.Phrases
                 .OrderBy(x => x.Phrase)
                 .Select(x => x.Phrase)
@@ -186,6 +192,9 @@ public sealed class TemplateProjectionMapper
         if (filter.FieldType is not null)
             AddFieldTypeMatches(template, filter.FieldType.Value, matches);
 
+        if (filter.FieldRole is not null)
+            AddFieldRoleMatches(template, filter.FieldRole.Value, matches);
+
         if (filter.HasNorm is not null)
             AddNormMatches(template, filter.HasNorm.Value, matches);
 
@@ -220,7 +229,8 @@ public sealed class TemplateProjectionMapper
         string searchText,
         List<TemplateSearchMatchDto> matches)
     {
-        if (!Contains(template.Name, searchText)) return;
+        if (!Contains(template.Name, searchText))
+            return;
 
         matches.Add(new TemplateSearchMatchDto
         {
@@ -236,7 +246,8 @@ public sealed class TemplateProjectionMapper
     {
         foreach (var block in template.Blocks)
         {
-            if (!Contains(block.Name, searchText)) continue;
+            if (!Contains(block.Name, searchText))
+                continue;
 
             matches.Add(new TemplateSearchMatchDto
             {
@@ -257,7 +268,8 @@ public sealed class TemplateProjectionMapper
         {
             foreach (var field in block.Fields)
             {
-                if (!Contains(field.FieldName, searchText)) continue;
+                if (!Contains(field.FieldName, searchText))
+                    continue;
 
                 matches.Add(CreateFieldMatch(
                     TemplateSearchMatchType.FieldName,
@@ -277,7 +289,8 @@ public sealed class TemplateProjectionMapper
         {
             foreach (var field in block.Fields)
             {
-                if (!Contains(field.DisplayName, searchText)) continue;
+                if (!Contains(field.DisplayName, searchText))
+                    continue;
 
                 matches.Add(CreateFieldMatch(
                     TemplateSearchMatchType.FieldDisplayName,
@@ -344,6 +357,24 @@ public sealed class TemplateProjectionMapper
         }
     }
 
+    private static void AddFieldRoleMatches(
+        TemplateReadModel template,
+        TemplateFieldRole fieldRole,
+        List<TemplateSearchMatchDto> matches)
+    {
+        foreach (var block in template.Blocks)
+        {
+            foreach (var field in block.Fields.Where(x => x.Role == fieldRole))
+            {
+                matches.Add(CreateFieldMatch(
+                    TemplateSearchMatchType.FieldRole,
+                    field.Role.ToString(),
+                    block,
+                    field));
+            }
+        }
+    }
+
     private static void AddNormMatches(
         TemplateReadModel template,
         bool hasNorm,
@@ -376,6 +407,7 @@ public sealed class TemplateProjectionMapper
         return new TemplateSearchMatchDto
         {
             Type = type,
+            Role = field.Role,
             Value = value,
             BlockId = block.Id,
             BlockName = block.Name,

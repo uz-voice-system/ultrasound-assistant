@@ -1,3 +1,4 @@
+using UltrasoundAssistant.Contracts.Entity.Templates;
 using UltrasoundAssistant.Contracts.Events.Abstraction;
 
 namespace UltrasoundAssistant.Contracts.Events.TemplateEvent;
@@ -28,9 +29,14 @@ public sealed class TemplateCreatedEvent : IEvent
     public string Name { get; set; } = string.Empty;
 
     /// <summary>
+    /// Длительность приёма по умолчанию в минутах.
+    /// </summary>
+    public int DefaultAppointmentDurationMinutes { get; set; }
+
+    /// <summary>
     /// Блоки шаблона
     /// </summary>
-    public List<TemplateBlockEventDto> Blocks { get; set; } = [];
+    public List<TemplateBlockDto> Blocks { get; set; } = [];
 
     /// <summary>
     /// Версия шаблона

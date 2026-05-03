@@ -1,4 +1,4 @@
-﻿using UltrasoundAssistant.Contracts.Reads.Reports;
+﻿using UltrasoundAssistant.Contracts.Reads.Reports.Details;
 using UltrasoundAssistant.Contracts.Reads.Templates.Details;
 
 namespace UltrasoundAssistant.ReportGenerator.Abstractions;

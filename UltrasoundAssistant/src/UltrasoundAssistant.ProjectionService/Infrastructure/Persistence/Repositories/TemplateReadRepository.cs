@@ -21,6 +21,13 @@ public sealed class TemplateReadRepository : ITemplateReadRepository
         return await query.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
     }
 
+    public async Task<TemplateReadModel?> GetByIdForUpdateAsync(Guid id, CancellationToken cancellationToken)
+    {
+        var query = IncludeTemplateGraph(_dbContext.Templates);
+
+        return await query.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+    }
+
     public async Task<IReadOnlyList<TemplateReadModel>> SearchForDoctorAsync(TemplateSearchRequest filter, CancellationToken cancellationToken)
     {
         var query = _dbContext.Templates.AsNoTracking().Where(x => !x.IsDeleted);
@@ -97,6 +104,13 @@ public sealed class TemplateReadRepository : ITemplateReadRepository
                     b.Fields.Any(f => f.Type == filter.FieldType.Value)));
         }
 
+        if (filter.FieldRole is not null)
+        {
+            query = query.Where(x =>
+                x.Blocks.Any(b =>
+                    b.Fields.Any(f => f.Role == filter.FieldRole.Value)));
+        }
+
         if (filter.HasNorm is not null)
         {
             if (filter.HasNorm.Value)
@@ -152,6 +166,16 @@ public sealed class TemplateReadRepository : ITemplateReadRepository
             .Include(t => t.Blocks)
                 .ThenInclude(b => b.Fields)
                     .ThenInclude(f => f.Phrases);
+    }
+
+    public async Task AddAsync(TemplateReadModel template, CancellationToken cancellationToken)
+    {
+        await _dbContext.Templates.AddAsync(template, cancellationToken);
+    }
+
+    public async Task SaveChangesAsync(CancellationToken cancellationToken)
+    {
+        await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
     private static string Normalize(string value)

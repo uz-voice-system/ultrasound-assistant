@@ -1,4 +1,7 @@
-﻿namespace UltrasoundAssistant.Contracts.Reads.Templates.Admin;
+﻿using UltrasoundAssistant.Contracts.Entity.Templates;
+using UltrasoundAssistant.Contracts.Reads.Templates.Enums;
+
+namespace UltrasoundAssistant.Contracts.Reads.Templates.Admin;
 
 /// <summary>
 /// Совпадение при поиске шаблона
@@ -9,6 +12,12 @@ public sealed class TemplateSearchMatchDto
     /// Тип совпадения
     /// </summary>
     public TemplateSearchMatchType Type { get; set; }
+
+    /// <summary>
+    /// Роль поля.
+    /// Заполняется только для совпадений, связанных с полем.
+    /// </summary>
+    public TemplateFieldRole? Role { get; set; }
 
     /// <summary>
     /// Найденное значение

@@ -43,6 +43,11 @@ public sealed class TemplateAdminSearchRequest
     public TemplateFieldType? FieldType { get; set; }
 
     /// <summary>
+    /// Роль поля.
+    /// </summary>
+    public TemplateFieldRole? FieldRole { get; set; }
+
+    /// <summary>
     /// Признак наличия нормы
     /// </summary>
     public bool? HasNorm { get; set; }

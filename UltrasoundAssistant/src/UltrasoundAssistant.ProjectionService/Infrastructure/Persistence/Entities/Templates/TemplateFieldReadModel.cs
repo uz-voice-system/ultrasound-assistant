@@ -16,6 +16,8 @@ public sealed class TemplateFieldReadModel
 
     public TemplateFieldType Type { get; set; }
 
+    public TemplateFieldRole Role { get; set; } = TemplateFieldRole.Regular;
+
     public decimal? NormMin { get; set; }
 
     public decimal? NormMax { get; set; }

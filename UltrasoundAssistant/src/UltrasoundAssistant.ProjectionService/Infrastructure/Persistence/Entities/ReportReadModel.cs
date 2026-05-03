@@ -6,11 +6,7 @@ public sealed class ReportReadModel
 {
     public Guid Id { get; set; }
 
-    public Guid PatientId { get; set; }
-
-    public Guid DoctorId { get; set; }
-
-    public Guid TemplateId { get; set; }
+    public Guid AppointmentId { get; set; }
 
     public ReportStatus Status { get; set; }
 
@@ -23,4 +19,6 @@ public sealed class ReportReadModel
     public DateTime UpdatedAtUtc { get; set; }
 
     public int Version { get; set; }
+
+    public AppointmentReadModel Appointment { get; set; } = null!;
 }
