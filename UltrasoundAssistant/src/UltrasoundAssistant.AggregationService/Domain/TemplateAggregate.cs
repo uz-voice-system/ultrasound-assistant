@@ -17,12 +17,15 @@ public sealed class TemplateAggregate
 
     public string Name { get; private set; } = string.Empty;
 
-    public List<TemplateBlockEventDto> Blocks { get; private set; } = [];
+    public int DefaultAppointmentDurationMinutes { get; private set; }
+
+    public List<TemplateBlockDto> Blocks { get; private set; } = [];
 
     public TemplateCreatedEvent Create(
         Guid templateId,
         string name,
-        IReadOnlyList<TemplateBlockEventDto> blocks)
+        int defaultAppointmentDurationMinutes,
+        IReadOnlyList<TemplateBlockDto> blocks)
     {
         if (Exists)
             throw new DomainException("Template already exists");
@@ -31,6 +34,7 @@ public sealed class TemplateAggregate
         {
             TemplateId = templateId,
             Name = name.Trim(),
+            DefaultAppointmentDurationMinutes = defaultAppointmentDurationMinutes,
             Blocks = CloneBlocks(blocks),
             Version = Version + 1
         };
@@ -38,7 +42,8 @@ public sealed class TemplateAggregate
 
     public TemplateUpdatedEvent Update(
         string? name,
-        IReadOnlyList<TemplateBlockEventDto>? blocks)
+        int? defaultAppointmentDurationMinutes,
+        IReadOnlyList<TemplateBlockDto>? blocks)
     {
         if (!Exists || IsDeleted)
             throw new DomainException("Template not found");
@@ -46,6 +51,8 @@ public sealed class TemplateAggregate
         var nextName = string.IsNullOrWhiteSpace(name)
             ? Name
             : name.Trim();
+
+        var nextDuration = defaultAppointmentDurationMinutes ?? DefaultAppointmentDurationMinutes;
 
         var nextBlocks = blocks is null
             ? CloneBlocks(Blocks)
@@ -55,6 +62,7 @@ public sealed class TemplateAggregate
         {
             TemplateId = Id,
             Name = nextName,
+            DefaultAppointmentDurationMinutes = nextDuration,
             Blocks = nextBlocks,
             Version = Version + 1
         };
@@ -75,9 +83,7 @@ public sealed class TemplateAggregate
     public void LoadFrom(IEnumerable<EventRecord> history)
     {
         foreach (var item in history.OrderBy(x => x.Version))
-        {
             Apply(item);
-        }
     }
 
     private void Apply(EventRecord record)
@@ -93,6 +99,7 @@ public sealed class TemplateAggregate
 
                     Id = e.TemplateId;
                     Name = e.Name;
+                    DefaultAppointmentDurationMinutes = e.DefaultAppointmentDurationMinutes;
                     Blocks = CloneBlocks(e.Blocks);
                     Exists = true;
                     IsDeleted = false;
@@ -107,13 +114,17 @@ public sealed class TemplateAggregate
                                 JsonDefaults.Web)
                             ?? throw new InvalidOperationException("Invalid TemplateUpdatedEvent payload");
 
-                    Name = string.IsNullOrWhiteSpace(e.Name)
-                        ? Name
-                        : e.Name;
+                    if (!string.IsNullOrWhiteSpace(e.Name))
+                        Name = e.Name.Trim();
+
+                    if (e.DefaultAppointmentDurationMinutes is not null)
+                        DefaultAppointmentDurationMinutes = e.DefaultAppointmentDurationMinutes.Value;
 
                     if (e.Blocks is not null)
                         Blocks = CloneBlocks(e.Blocks);
 
+                    Exists = true;
+                    IsDeleted = false;
                     Version = e.Version;
                     break;
                 }
@@ -132,11 +143,11 @@ public sealed class TemplateAggregate
         }
     }
 
-    private static List<TemplateBlockEventDto> CloneBlocks(
-        IReadOnlyList<TemplateBlockEventDto> blocks)
+    private static List<TemplateBlockDto> CloneBlocks(
+        IReadOnlyList<TemplateBlockDto> blocks)
     {
         return blocks
-            .Select(block => new TemplateBlockEventDto
+            .Select(block => new TemplateBlockDto
             {
                 Id = block.Id,
                 Name = block.Name.Trim(),
@@ -150,13 +161,14 @@ public sealed class TemplateAggregate
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .ToList(),
                 Fields = block.Fields
-                    .Select(field => new TemplateFieldEventDto
+                    .Select(field => new TemplateFieldDto
                     {
                         Id = field.Id,
                         FieldName = field.FieldName.Trim(),
                         DisplayName = field.DisplayName.Trim(),
                         Position = field.Position,
                         Type = field.Type,
+                        Role = field.Role,
                         Phrases = field.Phrases
                             .Where(x => !string.IsNullOrWhiteSpace(x))
                             .Select(x => x.Trim())

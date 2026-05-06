@@ -1,43 +1,98 @@
-﻿using Microsoft.Extensions.Options;
+﻿using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
+using System.Text.Json;
+using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 using UltrasoundAssistant.ApiGateway.Options;
-using UltrasoundAssistant.Contracts.Enums;
+using UltrasoundAssistant.Contracts.Auth;
 
 namespace UltrasoundAssistant.ApiGateway.Services;
 
 public sealed class AuthService
 {
-    private readonly DemoUsersOptions _options;
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
-    public AuthService(IOptions<DemoUsersOptions> options)
+    private readonly ProjectionApiClient _projectionClient;
+    private readonly JwtOptions _jwtOptions;
+
+    public AuthService(
+        ProjectionApiClient projectionClient,
+        IOptions<JwtOptions> jwtOptions)
     {
-        _options = options.Value;
+        _projectionClient = projectionClient;
+        _jwtOptions = jwtOptions.Value;
     }
 
-    public LoginResult? Login(string login, string password)
+    public async Task<LoginResult?> LoginAsync(
+        string login,
+        string password,
+        CancellationToken cancellationToken)
     {
-        var user = _options.Users.FirstOrDefault(x =>
-            string.Equals(x.Login, login, StringComparison.OrdinalIgnoreCase) &&
-            x.Password == password);
+        var request = new LoginRequest
+        {
+            Login = login,
+            Password = password
+        };
+
+        var response = await _projectionClient.PostAsync(
+            "/api/read/auth/verify",
+            request,
+            cancellationToken);
+
+        if (response.StatusCode == StatusCodes.Status401Unauthorized)
+            return null;
+
+        if (response.StatusCode < 200 || response.StatusCode >= 300)
+            throw new InvalidOperationException("Auth read service returned an unexpected response");
+
+        var user = JsonSerializer.Deserialize<AuthUserDto>(
+            response.Content,
+            JsonOptions);
 
         if (user is null)
-            return null;
+            throw new InvalidOperationException("Invalid AuthUserDto response");
+
+        var expiresAtUtc = DateTime.UtcNow.AddMinutes(_jwtOptions.ExpirationMinutes);
 
         return new LoginResult
         {
-            UserId = user.Id,
+            UserId = user.UserId,
             Login = user.Login,
             FullName = user.FullName,
             Role = user.Role,
-            Token = Convert.ToBase64String(Guid.NewGuid().ToByteArray())
+            Token = CreateToken(user, expiresAtUtc),
+            ExpiresAtUtc = expiresAtUtc
         };
     }
-}
 
-public sealed class LoginResult
-{
-    public Guid UserId { get; set; }
-    public string Login { get; set; } = string.Empty;
-    public string FullName { get; set; } = string.Empty;
-    public UserRole Role { get; set; }
-    public string Token { get; set; } = string.Empty;
+    private string CreateToken(AuthUserDto user, DateTime expiresAtUtc)
+    {
+        var key = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes(_jwtOptions.SecretKey));
+
+        var credentials = new SigningCredentials(
+            key,
+            SecurityAlgorithms.HmacSha256);
+
+        var claims = new List<Claim>
+        {
+            new(JwtRegisteredClaimNames.Sub, user.UserId.ToString()),
+            new(JwtRegisteredClaimNames.UniqueName, user.Login),
+            new(ClaimTypes.NameIdentifier, user.UserId.ToString()),
+            new(ClaimTypes.Name, user.Login),
+            new(ClaimTypes.Role, user.Role.ToString()),
+            new("full_name", user.FullName)
+        };
+
+        var token = new JwtSecurityToken(
+            issuer: _jwtOptions.Issuer,
+            audience: _jwtOptions.Audience,
+            claims: claims,
+            notBefore: DateTime.UtcNow,
+            expires: expiresAtUtc,
+            signingCredentials: credentials);
+
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
 }

@@ -95,19 +95,7 @@ public sealed class RabbitMqProjectionConsumer : BackgroundService
             global: false,
             cancellationToken: stoppingToken);
 
-        var routingKeys = new[]
-        {
-        "patient.created",
-        "patient.updated",
-        "patient.deactivated",
-        "template.created",
-        "template.updated",
-        "template.deleted",
-        "report.created",
-        "report.field.updated",
-        "report.completed",
-        "report.deleted"
-    };
+        var routingKeys = GetRoutingKeysFromHandlers();
 
         foreach (var routingKey in routingKeys)
         {
@@ -117,6 +105,12 @@ public sealed class RabbitMqProjectionConsumer : BackgroundService
                 routingKey: routingKey,
                 arguments: null,
                 cancellationToken: stoppingToken);
+
+            _logger.LogInformation(
+                "Projection queue bound. Queue={Queue}, Exchange={Exchange}, RoutingKey={RoutingKey}",
+                _options.Queue,
+                _options.Exchange,
+                routingKey);
         }
 
         var consumer = new AsyncEventingBasicConsumer(_channel);
@@ -144,16 +138,29 @@ public sealed class RabbitMqProjectionConsumer : BackgroundService
                 if (matchedHandlers.Count == 0)
                 {
                     _logger.LogWarning("No handler found for routing key {RoutingKey}", routingKey);
-                    await _channel.BasicAckAsync(ea.DeliveryTag, false, stoppingToken);
+
+                    await _channel.BasicAckAsync(
+                        ea.DeliveryTag,
+                        multiple: false,
+                        cancellationToken: stoppingToken);
+
                     return;
                 }
 
                 foreach (var handler in matchedHandlers)
                 {
+                    _logger.LogInformation(
+                        "Handling message. RoutingKey={RoutingKey}, Handler={Handler}",
+                        routingKey,
+                        handler.GetType().Name);
+
                     await handler.HandleAsync(payload, stoppingToken);
                 }
 
-                await _channel.BasicAckAsync(ea.DeliveryTag, false, stoppingToken);
+                await _channel.BasicAckAsync(
+                    ea.DeliveryTag,
+                    multiple: false,
+                    cancellationToken: stoppingToken);
             }
             catch (Exception ex)
             {
@@ -176,9 +183,39 @@ public sealed class RabbitMqProjectionConsumer : BackgroundService
             consumer: consumer,
             cancellationToken: stoppingToken);
 
-        _logger.LogInformation("Projection consumer started. Queue={Queue}, Exchange={Exchange}", _options.Queue, _options.Exchange);
+        _logger.LogInformation(
+            "Projection consumer started. Queue={Queue}, Exchange={Exchange}, ConsumerTag={ConsumerTag}",
+            _options.Queue,
+            _options.Exchange,
+            _consumerTag);
 
         await Task.Delay(Timeout.InfiniteTimeSpan, stoppingToken);
+    }
+
+    private IReadOnlyList<string> GetRoutingKeysFromHandlers()
+    {
+        using var scope = _scopeFactory.CreateScope();
+
+        var handlers = scope.ServiceProvider
+            .GetServices<IIntegrationEventHandler>()
+            .ToList();
+
+        _logger.LogInformation("Projection event handlers count: {Count}", handlers.Count);
+
+        foreach (var handler in handlers)
+        {
+            _logger.LogInformation(
+                "Projection event handler registered. Handler={Handler}, RoutingKey={RoutingKey}",
+                handler.GetType().Name,
+                handler.RoutingKey);
+        }
+
+        return handlers
+            .Select(x => x.RoutingKey)
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(x => x)
+            .ToList();
     }
 
     private async Task DisposeRabbitMqAsync()
@@ -187,6 +224,11 @@ public sealed class RabbitMqProjectionConsumer : BackgroundService
         {
             try
             {
+                if (!string.IsNullOrWhiteSpace(_consumerTag))
+                {
+                    await _channel.BasicCancelAsync(_consumerTag);
+                }
+
                 await _channel.DisposeAsync();
             }
             catch

@@ -1,4 +1,5 @@
-﻿using UltrasoundAssistant.Contracts.Events.Abstraction;
+﻿using UltrasoundAssistant.Contracts.Entity.Schedules;
+using UltrasoundAssistant.Contracts.Events.Abstraction;
 
 namespace UltrasoundAssistant.Contracts.Events.ScheduleEvent;
 
@@ -25,7 +26,7 @@ public sealed class UserScheduleUpdatedEvent : IEvent
     /// <summary>
     /// Элементы расписания
     /// </summary>
-    public List<UserScheduleItemEventDto> Items { get; set; } = [];
+    public List<UserScheduleItemDto> Items { get; set; } = [];
 
     /// <summary>
     /// Версия агрегата

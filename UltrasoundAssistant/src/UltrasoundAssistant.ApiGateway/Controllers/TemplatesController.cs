@@ -1,6 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using UltrasoundAssistant.ApiGateway.Services;
 using UltrasoundAssistant.Contracts.Commands.Templates;
+using UltrasoundAssistant.Contracts.Reads.Templates.Admin;
+using UltrasoundAssistant.Contracts.Reads.Templates.Search;
+using static System.Net.WebRequestMethods;
 
 namespace UltrasoundAssistant.ApiGateway.Controllers;
 
@@ -39,24 +42,24 @@ public sealed class TemplatesController : GatewayControllerBase
         return ProxyJson(result.StatusCode, result.Content);
     }
 
-    [HttpGet("search")]
-    public async Task<IActionResult> SearchForDoctor(CancellationToken ct)
+    [HttpPost("search")]
+    public async Task<IActionResult> SearchForDoctor([FromBody] TemplateSearchRequest filter, CancellationToken ct)
     {
-        var result = await _projectionClient.GetAsync("/api/read/templates/search" + Request.QueryString, ct);
+        var result = await _projectionClient.PostAsync("/api/read/templates/search", filter, ct);
         return ProxyJson(result.StatusCode, result.Content);
     }
 
-    [HttpGet("search-admin")]
-    public async Task<IActionResult> SearchForAdmin(CancellationToken ct)
+    [HttpPost("search-admin")]
+    public async Task<IActionResult> SearchForAdmin([FromBody] TemplateAdminSearchRequest filter, CancellationToken ct)
     {
-        var result = await _projectionClient.GetAsync("/api/read/templates/search-admin" + Request.QueryString, ct);
+        var result = await _projectionClient.PostAsync("/api/read/templates/search-admin", filter, ct);
         return ProxyJson(result.StatusCode, result.Content);
     }
 
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
     {
-        var result = await _projectionClient.GetAsync($"/api/read/templates/{id}", ct);
+        var result = await _projectionClient.GetAsync($"/api/read/templates/{id}" + Request.QueryString, ct);
         return ProxyJson(result.StatusCode, result.Content);
     }
 }

@@ -1,9 +1,9 @@
-﻿namespace UltrasoundAssistant.Contracts.Events.ScheduleEvent;
+﻿namespace UltrasoundAssistant.Contracts.Entity.Schedules;
 
 /// <summary>
 /// Элемент расписания пользователя в событии
 /// </summary>
-public sealed class UserScheduleItemEventDto
+public sealed class UserScheduleItemDto
 {
     /// <summary>
     /// Идентификатор элемента расписания

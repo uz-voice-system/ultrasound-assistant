@@ -28,16 +28,16 @@ public sealed class TemplatesReadController : ControllerBase
         return Ok(template);
     }
 
-    [HttpGet("search")]
-    public async Task<ActionResult<IReadOnlyList<TemplateSummaryDto>>> SearchForDoctor([FromQuery] TemplateSearchRequest filter, CancellationToken cancellationToken)
+    [HttpPost("search")]
+    public async Task<ActionResult<IReadOnlyList<TemplateSummaryDto>>> SearchForDoctor([FromBody] TemplateSearchRequest filter, CancellationToken cancellationToken)
     {
         var templates = await _templateReadService.SearchForDoctorAsync(filter, cancellationToken);
 
         return Ok(templates);
     }
 
-    [HttpGet("search-admin")]
-    public async Task<ActionResult<IReadOnlyList<TemplateSummaryDto>>> SearchForAdmin([FromQuery] TemplateAdminSearchRequest filter, CancellationToken cancellationToken)
+    [HttpPost("search-admin")]
+    public async Task<ActionResult<IReadOnlyList<TemplateSummaryDto>>> SearchForAdmin([FromBody] TemplateAdminSearchRequest filter, CancellationToken cancellationToken)
     {
         var templates = await _templateReadService.SearchForAdminAsync(filter, cancellationToken);
 

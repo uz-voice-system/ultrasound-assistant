@@ -49,6 +49,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAppointmentReadService, AppointmentReadService>();
         services.AddScoped<IReportReadService, ReportReadService>();
         services.AddScoped<ITemplateReadService, TemplateReadService>();
+        services.AddScoped<IAuthReadService, AuthReadService>();
 
         services.AddScoped<PatientProjectionMapper>();
         services.AddScoped<UserProjectionMapper>();

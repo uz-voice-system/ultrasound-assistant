@@ -8,93 +8,68 @@ namespace UltrasoundAssistant.AggregationService.Domain;
 public sealed class ReportAggregate
 {
     public Guid Id { get; private set; }
-    public Guid PatientId { get; private set; }
-    public Guid DoctorId { get; private set; }
-    public Guid TemplateId { get; private set; }
 
     public bool Exists { get; private set; }
+
     public bool IsDeleted { get; private set; }
-    public ReportStatus Status { get; private set; }
+
     public int Version { get; private set; }
 
-    public Dictionary<string, ReportFieldState> Fields { get; } =
-        new(StringComparer.OrdinalIgnoreCase);
+    public Guid AppointmentId { get; private set; }
 
-    public ReportCreatedEvent Create(Guid reportId, Guid patientId, Guid doctorId, Guid templateId)
+    public ReportStatus Status { get; private set; }
+
+    public string ContentJson { get; private set; } = "{}";
+
+    public ReportCreatedEvent Create(
+        Guid reportId,
+        Guid appointmentId,
+        ReportStatus status,
+        string contentJson)
     {
-        if (reportId == Guid.Empty)
-            throw new DomainException("Report id is required");
-
-        if (patientId == Guid.Empty)
-            throw new DomainException("Patient id is required");
-
-        if (doctorId == Guid.Empty)
-            throw new DomainException("Doctor id is required");
-
-        if (templateId == Guid.Empty)
-            throw new DomainException("Template id is required");
-
-        if (Exists)
+        if (Exists && !IsDeleted)
             throw new DomainException("Report already exists");
+
+        var now = DateTime.UtcNow;
 
         return new ReportCreatedEvent
         {
-            Id = reportId,
-            PatientId = patientId,
-            DoctorId = doctorId,
-            TemplateId = templateId,
-            Status = ReportStatus.Draft,
+            ReportId = reportId,
+            AppointmentId = appointmentId,
+            Status = status,
+            ContentJson = contentJson,
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now,
             Version = Version + 1
         };
     }
 
-    public ReportFieldUpdatedEvent UpdateField(string fieldName, string value, double confidence)
+    public ReportUpdatedEvent Update(
+        ReportStatus status,
+        string contentJson)
     {
         if (!Exists || IsDeleted)
             throw new DomainException("Report not found");
 
-        if (Status == ReportStatus.Completed)
-            throw new DomainException("Completed report cannot be changed");
-
-        if (string.IsNullOrWhiteSpace(fieldName))
-            throw new DomainException("Field name is required");
-
-        if (string.IsNullOrWhiteSpace(value))
-            throw new DomainException("Field value is required");
-
-        return new ReportFieldUpdatedEvent
+        return new ReportUpdatedEvent
         {
             ReportId = Id,
-            FieldName = fieldName.Trim(),
-            Value = value.Trim(),
-            Confidence = confidence,
+            Status = status,
+            ContentJson = contentJson,
+            UpdatedAtUtc = DateTime.UtcNow,
             Version = Version + 1
         };
     }
 
-    public ReportCompletedEvent Complete()
+    public ReportDeletedEvent Delete()
     {
         if (!Exists || IsDeleted)
-            throw new DomainException("Report not found");
-
-        if (Status == ReportStatus.Completed)
-            throw new DomainException("Report already completed");
-
-        return new ReportCompletedEvent
-        {
-            ReportId = Id,
-            Version = Version + 1
-        };
-    }
-
-    public ReportDeletedEvent DeleteDraft()
-    {
-        if (!Exists || IsDeleted)
-            throw new DomainException("Report not found");
+            throw new DomainException("Report not found or already deleted");
 
         return new ReportDeletedEvent
         {
             ReportId = Id,
+            UpdatedAtUtc = DateTime.UtcNow,
             Version = Version + 1
         };
     }
@@ -102,9 +77,7 @@ public sealed class ReportAggregate
     public void LoadFrom(IEnumerable<EventRecord> history)
     {
         foreach (var item in history.OrderBy(x => x.Version))
-        {
             Apply(item);
-        }
     }
 
     private void Apply(EventRecord record)
@@ -113,37 +86,43 @@ public sealed class ReportAggregate
         {
             case nameof(ReportCreatedEvent):
                 {
-                    var e = JsonSerializer.Deserialize<ReportCreatedEvent>(record.Payload, JsonDefaults.Web)!;
-                    Id = e.Id;
-                    PatientId = e.PatientId;
-                    DoctorId = e.DoctorId;
-                    TemplateId = e.TemplateId;
+                    var e = JsonSerializer.Deserialize<ReportCreatedEvent>(
+                                record.Payload,
+                                JsonDefaults.Web)
+                            ?? throw new InvalidOperationException("Invalid ReportCreatedEvent payload");
+
+                    Id = e.ReportId;
+                    AppointmentId = e.AppointmentId;
                     Status = e.Status;
+                    ContentJson = e.ContentJson;
                     Exists = true;
                     IsDeleted = false;
                     Version = e.Version;
                     break;
                 }
 
-            case nameof(ReportFieldUpdatedEvent):
+            case nameof(ReportUpdatedEvent):
                 {
-                    var e = JsonSerializer.Deserialize<ReportFieldUpdatedEvent>(record.Payload, JsonDefaults.Web)!;
-                    Fields[e.FieldName] = new ReportFieldState(e.Value, e.Confidence);
-                    Version = e.Version;
-                    break;
-                }
+                    var e = JsonSerializer.Deserialize<ReportUpdatedEvent>(
+                                record.Payload,
+                                JsonDefaults.Web)
+                            ?? throw new InvalidOperationException("Invalid ReportUpdatedEvent payload");
 
-            case nameof(ReportCompletedEvent):
-                {
-                    var e = JsonSerializer.Deserialize<ReportCompletedEvent>(record.Payload, JsonDefaults.Web)!;
-                    Status = ReportStatus.Completed;
+                    Status = e.Status;
+                    ContentJson = e.ContentJson;
+                    Exists = true;
+                    IsDeleted = false;
                     Version = e.Version;
                     break;
                 }
 
             case nameof(ReportDeletedEvent):
                 {
-                    var e = JsonSerializer.Deserialize<ReportDeletedEvent>(record.Payload, JsonDefaults.Web)!;
+                    var e = JsonSerializer.Deserialize<ReportDeletedEvent>(
+                                record.Payload,
+                                JsonDefaults.Web)
+                            ?? throw new InvalidOperationException("Invalid ReportDeletedEvent payload");
+
                     IsDeleted = true;
                     Version = e.Version;
                     break;
@@ -151,5 +130,3 @@ public sealed class ReportAggregate
         }
     }
 }
-
-public sealed record ReportFieldState(string Value, double Confidence);

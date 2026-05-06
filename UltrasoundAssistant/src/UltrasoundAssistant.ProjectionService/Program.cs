@@ -1,10 +1,14 @@
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json.Serialization;
 using UltrasoundAssistant.ProjectionService.Extensions;
 using UltrasoundAssistant.ProjectionService.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers();
+builder.Services
+    .AddControllers()
+    .AddJsonOptions(options => { options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()); });
+
 builder.Services.AddProjectionInfrastructure(builder.Configuration);
 builder.Services.AddProjectionApplication();
 builder.Services.AddEndpointsApiExplorer();

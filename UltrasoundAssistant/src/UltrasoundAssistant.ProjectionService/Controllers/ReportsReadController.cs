@@ -1,87 +1,62 @@
-using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using UltrasoundAssistant.Contracts.Reads.Reports.Details;
-using UltrasoundAssistant.ProjectionService.Infrastructure.Persistence;
+using UltrasoundAssistant.Contracts.Reads.Reports.Search;
+using UltrasoundAssistant.ProjectionService.Application.Abstractions;
 
 namespace UltrasoundAssistant.ProjectionService.Controllers;
 
 [ApiController]
 [Route("api/read/reports")]
-public sealed class ReportsReadController(ProjectionDbContext db) : ControllerBase
+public sealed class ReportsReadController : ControllerBase
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private readonly IReportReadService _reportReadService;
+
+    public ReportsReadController(IReportReadService reportReadService)
+    {
+        _reportReadService = reportReadService;
+    }
 
     [HttpGet("{id:guid}")]
-    public async Task<ActionResult<ReportDto>> GetById(Guid id, CancellationToken cancellationToken)
+    public async Task<ActionResult<ReportDto>> GetById(
+        Guid id,
+        [FromQuery] bool includeDeleted,
+        CancellationToken cancellationToken)
     {
-        var row = await (
-            from report in db.Reports.AsNoTracking()
-            join patient in db.Patients.AsNoTracking() on report.PatientId equals patient.Id into patientJoin
-            from patient in patientJoin.DefaultIfEmpty()
-            join template in db.Templates.AsNoTracking() on report.TemplateId equals template.Id into templateJoin
-            from template in templateJoin.DefaultIfEmpty()
-            where report.Id == id && !report.IsDeleted
-            select new
-            {
-                Report = report,
-                PatientName = patient != null && !patient.IsDeleted ? patient.FullName : null,
-                TemplateName = template != null && !template.IsDeleted ? template.Name : null
-            })
-            .FirstOrDefaultAsync(cancellationToken);
+        var report = await _reportReadService.GetByIdAsync(
+            id,
+            includeDeleted,
+            cancellationToken);
 
-        if (row is null)
-        {
+        if (report is null)
             return NotFound();
-        }
 
-        return Ok(Map(row.Report, row.PatientName, row.TemplateName));
+        return Ok(report);
     }
 
-    [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<ReportDto>>> List(CancellationToken cancellationToken)
+    [HttpGet("by-appointment/{appointmentId:guid}")]
+    public async Task<ActionResult<ReportDto>> GetByAppointmentId(
+        Guid appointmentId,
+        CancellationToken cancellationToken)
     {
-        var rows = await (
-            from report in db.Reports.AsNoTracking()
-            join patient in db.Patients.AsNoTracking() on report.PatientId equals patient.Id into patientJoin
-            from patient in patientJoin.DefaultIfEmpty()
-            join template in db.Templates.AsNoTracking() on report.TemplateId equals template.Id into templateJoin
-            from template in templateJoin.DefaultIfEmpty()
-            where !report.IsDeleted
-            orderby report.UpdatedAtUtc descending
-            select new
-            {
-                Report = report,
-                PatientName = patient != null && !patient.IsDeleted ? patient.FullName : null,
-                TemplateName = template != null && !template.IsDeleted ? template.Name : null
-            })
-            .ToListAsync(cancellationToken);
+        var report = await _reportReadService.GetByAppointmentIdAsync(
+            appointmentId,
+            cancellationToken);
 
-        return Ok(rows.Select(x => Map(x.Report, x.PatientName, x.TemplateName)).ToList());
+        if (report is null)
+            return NotFound();
+
+        return Ok(report);
     }
 
-    private static ReportDto Map(
-        Infrastructure.Persistence.Entities.ReportReadModel row,
-        string? patientName,
-        string? templateName)
+    [HttpPost("search")]
+    public async Task<ActionResult<IReadOnlyList<ReportSummaryDto>>> Search(
+        [FromBody] ReportSearchRequest filter,
+        CancellationToken cancellationToken)
     {
-        var content = string.IsNullOrWhiteSpace(row.ContentJson)
-            ? new Dictionary<string, string>()
-            : JsonSerializer.Deserialize<Dictionary<string, string>>(row.ContentJson, JsonOptions)
-              ?? new Dictionary<string, string>();
+        var reports = await _reportReadService.SearchAsync(
+            filter,
+            cancellationToken);
 
-        return new ReportDto
-        {
-            Id = row.Id,
-            Status = row.Status,
-            PatientId = row.PatientId,
-            PatientName = patientName,
-            TemplateId = row.TemplateId,
-            TemplateName = templateName,
-            Content = content,
-            CreatedAt = row.CreatedAtUtc,
-            UpdatedAt = row.UpdatedAtUtc,
-            Version = row.Version
-        };
+        return Ok(reports);
     }
 }

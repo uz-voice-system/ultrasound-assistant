@@ -16,36 +16,21 @@ public sealed class ReportController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<IActionResult> Create(
-        [FromBody] CreateReportCommand command,
-        CancellationToken ct)
+    public async Task<IActionResult> Create([FromBody] CreateReportCommand command, CancellationToken ct)
     {
         var result = await _handler.CreateAsync(command, ct);
         return StatusCode(result.StatusCode, result);
     }
 
-    [HttpPost("field")]
-    public async Task<IActionResult> UpdateField(
-        [FromBody] UpdateReportFieldCommand command,
-        CancellationToken ct)
+    [HttpPut]
+    public async Task<IActionResult> Update([FromBody] UpdateReportCommand command, CancellationToken ct)
     {
-        var result = await _handler.UpdateFieldAsync(command, ct);
-        return StatusCode(result.StatusCode, result);
-    }
-
-    [HttpPost("complete")]
-    public async Task<IActionResult> Complete(
-        [FromBody] CompleteReportCommand command,
-        CancellationToken ct)
-    {
-        var result = await _handler.CompleteAsync(command, ct);
+        var result = await _handler.UpdateAsync(command, ct);
         return StatusCode(result.StatusCode, result);
     }
 
     [HttpDelete]
-    public async Task<IActionResult> Delete(
-        [FromBody] DeleteReportCommand command,
-        CancellationToken ct)
+    public async Task<IActionResult> Delete([FromBody] DeleteReportCommand command, CancellationToken ct)
     {
         var result = await _handler.DeleteAsync(command, ct);
         return StatusCode(result.StatusCode, result);

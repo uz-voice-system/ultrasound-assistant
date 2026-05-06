@@ -38,6 +38,7 @@ public sealed class TemplateCommandHandler : CommandHandlerBase
             var @event = aggregate.Create(
                 command.TemplateId,
                 command.Name,
+                command.DefaultAppointmentDurationMinutes,
                 command.Blocks);
 
             return await SaveAndPublishAsync(
@@ -78,6 +79,7 @@ public sealed class TemplateCommandHandler : CommandHandlerBase
 
             var @event = aggregate.Update(
                 command.Name,
+                command.DefaultAppointmentDurationMinutes,
                 command.Blocks);
 
             return await SaveAndPublishAsync(

@@ -21,6 +21,8 @@ public static partial class TemplateCommandValidator
 
         ValidateTemplateName(command.Name, required: true);
 
+        ValidateDefaultAppointmentDuration(command.DefaultAppointmentDurationMinutes, required: true);
+
         ValidateBlocks(command.Blocks);
     }
 
@@ -35,10 +37,13 @@ public static partial class TemplateCommandValidator
         if (command.Name is not null)
             ValidateTemplateName(command.Name, required: false);
 
+        if (command.DefaultAppointmentDurationMinutes is not null)
+            ValidateDefaultAppointmentDuration(command.DefaultAppointmentDurationMinutes.Value, required: false);
+
         if (command.Blocks is not null)
             ValidateBlocks(command.Blocks);
 
-        if (command.Name is null && command.Blocks is null)
+        if (command.Name is null && command.DefaultAppointmentDurationMinutes is null && command.Blocks is null)
             throw new ArgumentException("Template update data is required");
     }
 
@@ -68,6 +73,15 @@ public static partial class TemplateCommandValidator
             throw new ArgumentException($"Template name length cannot exceed {MaxTemplateNameLength}");
     }
 
+    private static void ValidateDefaultAppointmentDuration(int durationMinutes, bool required)
+    {
+        if (durationMinutes <= 0)
+            throw new ArgumentException("DefaultAppointmentDurationMinutes must be greater than zero");
+
+        if (durationMinutes > 24 * 60)
+            throw new ArgumentException("DefaultAppointmentDurationMinutes cannot exceed 1440");
+    }
+
     private static void ValidateBlocks(IReadOnlyList<TemplateBlockDto>? blocks)
     {
         if (blocks is null || blocks.Count == 0)
@@ -92,6 +106,8 @@ public static partial class TemplateCommandValidator
                 fieldIds,
                 globalFieldNames);
         }
+
+        ValidateSpecialFieldRoles(blocks);
     }
 
     private static void ValidateBlock(
@@ -208,6 +224,9 @@ public static partial class TemplateCommandValidator
             throw new ArgumentException(
                 $"FieldName has invalid format: {fieldName}. Allowed format: latin letters, numbers and underscore");
         }
+
+        if (!Enum.IsDefined(typeof(TemplateFieldRole), field.Role))
+            throw new ArgumentException($"Invalid field role for field: {fieldName}");
 
         if (!globalFieldNames.Add(fieldName))
             throw new ArgumentException($"Duplicate field name in template: {fieldName}");
@@ -371,6 +390,17 @@ public static partial class TemplateCommandValidator
 
         if ((norm.Min is not null || norm.Max is not null) && string.IsNullOrWhiteSpace(norm.Unit))
             throw new ArgumentException($"Norm unit is required for field: {field.FieldName}");
+    }
+
+    private static void ValidateSpecialFieldRoles(IReadOnlyList<TemplateBlockDto> blocks)
+    {
+        var fields = blocks.SelectMany(x => x.Fields).ToList();
+
+        if (fields.Count(x => x.Role == TemplateFieldRole.Description) > 1)
+            throw new ArgumentException("Template can contain only one Description field");
+
+        if (fields.Count(x => x.Role == TemplateFieldRole.Conclusion) > 1)
+            throw new ArgumentException("Template can contain only one Conclusion field");
     }
 
     private static readonly Regex FieldNameRegex = new("^[A-Za-z][A-Za-z0-9_]*$", RegexOptions.Compiled);

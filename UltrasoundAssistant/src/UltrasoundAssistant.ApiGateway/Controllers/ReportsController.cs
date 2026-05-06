@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using UltrasoundAssistant.ApiGateway.Services;
 using UltrasoundAssistant.Contracts.Commands.Reports;
+using UltrasoundAssistant.Contracts.Reads.Reports.Search;
+using static System.Net.WebRequestMethods;
 
 namespace UltrasoundAssistant.ApiGateway.Controllers;
 
@@ -9,16 +11,13 @@ public sealed class ReportsController : GatewayControllerBase
 {
     private readonly AggregationApiClient _aggregationClient;
     private readonly ProjectionApiClient _projectionClient;
-    private readonly ReportGeneratorClient _reportGenerator;
 
     public ReportsController(
         AggregationApiClient aggregationClient,
-        ProjectionApiClient projectionClient,
-        ReportGeneratorClient reportGenerator)
+        ProjectionApiClient projectionClient)
     {
         _aggregationClient = aggregationClient;
         _projectionClient = projectionClient;
-        _reportGenerator = reportGenerator;
     }
 
     [HttpPost]
@@ -28,17 +27,10 @@ public sealed class ReportsController : GatewayControllerBase
         return ProxyJson(result.StatusCode, result.Content);
     }
 
-    [HttpPost("field")]
-    public async Task<IActionResult> UpdateField([FromBody] UpdateReportFieldCommand command, CancellationToken ct)
+    [HttpPut]
+    public async Task<IActionResult> Update([FromBody] UpdateReportCommand command, CancellationToken ct)
     {
-        var result = await _aggregationClient.PostAsync("/api/reports/field", command, ct);
-        return ProxyJson(result.StatusCode, result.Content);
-    }
-
-    [HttpPost("complete")]
-    public async Task<IActionResult> Complete([FromBody] CompleteReportCommand command, CancellationToken ct)
-    {
-        var result = await _aggregationClient.PostAsync("/api/reports/complete", command, ct);
+        var result = await _aggregationClient.PutAsync("/api/reports", command, ct);
         return ProxyJson(result.StatusCode, result.Content);
     }
 
@@ -49,25 +41,27 @@ public sealed class ReportsController : GatewayControllerBase
         return ProxyJson(result.StatusCode, result.Content);
     }
 
-    [HttpGet]
-    public async Task<IActionResult> List(CancellationToken ct)
-    {
-        var result = await _projectionClient.GetAsync("/api/read/reports", ct);
-        return ProxyJson(result.StatusCode, result.Content);
-    }
-
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
     {
-        var result = await _projectionClient.GetAsync($"/api/read/reports/{id}", ct);
+        var result = await _projectionClient.GetAsync($"/api/read/reports/{id}" + Request.QueryString, ct);
+
         return ProxyJson(result.StatusCode, result.Content);
     }
 
-    [HttpGet("{id:guid}/pdf")]
-    public async Task<IActionResult> GetPdf(Guid id, CancellationToken ct)
+    [HttpGet("by-appointment/{appointmentId:guid}")]
+    public async Task<IActionResult> GetByAppointmentId(Guid appointmentId, CancellationToken ct)
     {
-        var pdf = await _reportGenerator.GetPdfAsync(id, ct);
+        var result = await _projectionClient.GetAsync($"/api/read/reports/by-appointment/{appointmentId}", ct);
 
-        return File(pdf, "application/pdf", $"report-{id:N}.pdf");
+        return ProxyJson(result.StatusCode, result.Content);
+    }
+
+    [HttpPost("search")]
+    public async Task<IActionResult> Search([FromBody] ReportSearchRequest filter, CancellationToken ct)
+    {
+        var result = await _projectionClient.PostAsync("/api/read/reports/search", filter, ct);
+
+        return ProxyJson(result.StatusCode, result.Content);
     }
 }

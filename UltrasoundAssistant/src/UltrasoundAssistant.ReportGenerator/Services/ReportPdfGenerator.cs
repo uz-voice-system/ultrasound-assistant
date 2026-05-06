@@ -66,9 +66,9 @@ public sealed class ReportPdfGenerator : IReportPdfGenerator
 
             column.Item().Column(patient =>
             {
-                patient.Item().Text($"Пациент: {report.PatientName ?? "—"}").Bold();
+                patient.Item().Text($"Пациент: {report.PatientFullName ?? "—"}").Bold();
                 patient.Item().Text("Дата рождения: ДОБАВИТЬ ДАТУ РОЖДЕНИЯ ПАЦИЕНТА");
-                patient.Item().Text($"Дата исследования: {FormatDate(report.CreatedAt)}");
+                patient.Item().Text($"Дата исследования: {FormatDate(report.CreatedAtUtc)}");
             });
 
             column.Item()
@@ -93,22 +93,22 @@ public sealed class ReportPdfGenerator : IReportPdfGenerator
                     header.Cell().Element(HeaderCell).Text("Результат");
                 });
 
-                foreach (var field in report.Content
-                             .Where(x => !IsServiceField(x.Key))
-                             .OrderBy(x => GetFieldLabel(x.Key, fieldLabels)))
-                {
-                    var label = GetFieldLabel(field.Key, fieldLabels);
+                //foreach (var field in report.Content
+                //             .Where(x => !IsServiceField(x.Key))
+                //             .OrderBy(x => GetFieldLabel(x.Key, fieldLabels)))
+                //{
+                //    var label = GetFieldLabel(field.Key, fieldLabels);
 
-                    table.Cell().Element(Cell).Text(label);
-                    table.Cell().Element(Cell).Text(string.IsNullOrWhiteSpace(field.Value) ? "—" : field.Value);
-                }
+                //    table.Cell().Element(Cell).Text(label);
+                //    table.Cell().Element(Cell).Text(string.IsNullOrWhiteSpace(field.Value) ? "—" : field.Value);
+                //}
             });
 
             column.Item().PaddingTop(10).Text("Заключение").Bold().FontSize(13);
-            column.Item().BorderBottom(1).PaddingBottom(8).Text(GetConclusion(report));
+            //column.Item().BorderBottom(1).PaddingBottom(8).Text(GetConclusion(report));
 
             column.Item().Text("Рекомендации").Bold().FontSize(13);
-            column.Item().BorderBottom(1).PaddingBottom(8).Text(GetRecommendation(report));
+            //column.Item().BorderBottom(1).PaddingBottom(8).Text(GetRecommendation(report));
 
             column.Item().PaddingTop(25).AlignRight().Column(doctor =>
             {
@@ -176,17 +176,17 @@ public sealed class ReportPdfGenerator : IReportPdfGenerator
         return date.HasValue ? date.Value.ToString("dd.MM.yyyy") : "—";
     }
 
-    private static string GetConclusion(ReportDto report)
-    {
-        return report.Content.TryGetValue("conclusion", out var value) && !string.IsNullOrWhiteSpace(value)
-            ? value
-            : "Без особенностей.";
-    }
+    //private static string GetConclusion(ReportDto report)
+    //{
+    //    return report.ContentJson.TryGetValue("conclusion", out var value) && !string.IsNullOrWhiteSpace(value)
+    //        ? value
+    //        : "Без особенностей.";
+    //}
 
-    private static string GetRecommendation(ReportDto report)
-    {
-        return report.Content.TryGetValue("recommendation", out var value) && !string.IsNullOrWhiteSpace(value)
-            ? value
-            : "Консультация лечащего врача.";
-    }
+    //private static string GetRecommendation(ReportDto report)
+    //{
+    //    return report.ContentJson.TryGetValue("recommendation", out var value) && !string.IsNullOrWhiteSpace(value)
+    //        ? value
+    //        : "Консультация лечащего врача.";
+    //}
 }

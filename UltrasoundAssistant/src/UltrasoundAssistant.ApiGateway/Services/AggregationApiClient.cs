@@ -33,6 +33,24 @@ public sealed class AggregationApiClient
         return ((int)response.StatusCode, content);
     }
 
+    public async Task<(int StatusCode, string Content)> PatchAsync<T>(
+        string path,
+        T body,
+        CancellationToken cancellationToken)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Patch, path)
+        {
+            Content = new StringContent(
+                JsonSerializer.Serialize(body, JsonOptions),
+                Encoding.UTF8,
+                "application/json")
+        };
+
+        var response = await _httpClient.SendAsync(request, cancellationToken);
+        var content = await response.Content.ReadAsStringAsync(cancellationToken);
+        return ((int)response.StatusCode, content);
+    }
+
     public async Task<(int StatusCode, string Content)> DeleteAsync<T>(
         string path,
         T body,

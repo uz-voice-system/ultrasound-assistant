@@ -1,4 +1,5 @@
-﻿using UltrasoundAssistant.Contracts.Commands.Reports;
+﻿using System.Text.Json;
+using UltrasoundAssistant.Contracts.Commands.Reports;
 
 namespace UltrasoundAssistant.AggregationService.Application.Validation;
 
@@ -9,17 +10,16 @@ public static class ReportCommandValidator
         if (command.ReportId == Guid.Empty)
             throw new ArgumentException("ReportId is required");
 
-        if (command.PatientId == Guid.Empty)
-            throw new ArgumentException("PatientId is required");
+        if (command.AppointmentId == Guid.Empty)
+            throw new ArgumentException("AppointmentId is required");
 
-        if (command.DoctorId == Guid.Empty)
-            throw new ArgumentException("DoctorId is required");
+        if (!Enum.IsDefined(command.Status))
+            throw new ArgumentException($"Invalid report status: {command.Status}");
 
-        if (command.TemplateId == Guid.Empty)
-            throw new ArgumentException("TemplateId is required");
+        ValidateContentJson(command.ContentJson);
     }
 
-    public static void Validate(UpdateReportFieldCommand command)
+    public static void Validate(UpdateReportCommand command)
     {
         if (command.ReportId == Guid.Empty)
             throw new ArgumentException("ReportId is required");
@@ -27,20 +27,10 @@ public static class ReportCommandValidator
         if (command.ExpectedVersion < 0)
             throw new ArgumentException("ExpectedVersion cannot be negative");
 
-        if (string.IsNullOrWhiteSpace(command.FieldName))
-            throw new ArgumentException("FieldName is required");
+        if (!Enum.IsDefined(command.Status))
+            throw new ArgumentException($"Invalid report status: {command.Status}");
 
-        if (string.IsNullOrWhiteSpace(command.Value))
-            throw new ArgumentException("Value is required");
-    }
-
-    public static void Validate(CompleteReportCommand command)
-    {
-        if (command.ReportId == Guid.Empty)
-            throw new ArgumentException("ReportId is required");
-
-        if (command.ExpectedVersion < 0)
-            throw new ArgumentException("ExpectedVersion cannot be negative");
+        ValidateContentJson(command.ContentJson);
     }
 
     public static void Validate(DeleteReportCommand command)
@@ -50,5 +40,20 @@ public static class ReportCommandValidator
 
         if (command.ExpectedVersion < 0)
             throw new ArgumentException("ExpectedVersion cannot be negative");
+    }
+
+    private static void ValidateContentJson(string contentJson)
+    {
+        if (string.IsNullOrWhiteSpace(contentJson))
+            throw new ArgumentException("ContentJson is required");
+
+        try
+        {
+            JsonDocument.Parse(contentJson);
+        }
+        catch (JsonException)
+        {
+            throw new ArgumentException("ContentJson has invalid JSON format");
+        }
     }
 }

@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using UltrasoundAssistant.AggregationService.Application.Abstractions;
 using UltrasoundAssistant.AggregationService.Application.Handlers;
+using UltrasoundAssistant.AggregationService.Application.Services;
 using UltrasoundAssistant.AggregationService.Domain;
 using UltrasoundAssistant.AggregationService.Infrastructure.Messaging;
 using UltrasoundAssistant.AggregationService.Infrastructure.Persistence;
@@ -31,9 +32,14 @@ public static class ServiceCollectionExtensions
 
     public static IServiceCollection AddAggregationApplication(this IServiceCollection services)
     {
-        services.AddScoped<PatientCommandHandler>();
         services.AddScoped<TemplateCommandHandler>();
+        services.AddScoped<PatientCommandHandler>();
+        services.AddScoped<UserCommandHandler>();
+        services.AddScoped<UserScheduleCommandHandler>();
+        services.AddScoped<AppointmentCommandHandler>();
         services.AddScoped<ReportCommandHandler>();
+
+        services.AddScoped<PasswordHashService>();
 
         return services;
     }

@@ -1,48 +1,37 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using UltrasoundAssistant.Contracts.Reads.Patients.Details;
-using UltrasoundAssistant.ProjectionService.Infrastructure.Persistence;
+using UltrasoundAssistant.Contracts.Reads.Patients.Search;
+using UltrasoundAssistant.ProjectionService.Application.Abstractions;
 
 namespace UltrasoundAssistant.ProjectionService.Controllers;
 
 [ApiController]
 [Route("api/read/patients")]
-public sealed class PatientsReadController(ProjectionDbContext db) : ControllerBase
+public sealed class PatientsReadController : ControllerBase
 {
-    [HttpGet("{id:guid}")]
-    public async Task<ActionResult<PatientDto>> GetById(Guid id, CancellationToken cancellationToken)
-    {
-        var row = await db.Patients.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id && !p.IsDeleted, cancellationToken);
-        if (row is null)
-        {
-            return NotFound();
-        }
+    private readonly IPatientReadService _patientReadService;
 
-        return Ok(new PatientDto
-        {
-            Id = row.Id,
-            FullName = row.FullName,
-            BirthDate = row.BirthDate,
-            Gender = row.Gender,
-            Version = row.Version
-        });
+    public PatientsReadController(IPatientReadService patientReadService)
+    {
+        _patientReadService = patientReadService;
     }
 
-    [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<PatientDto>>> List(CancellationToken cancellationToken)
+    [HttpGet("{id:guid}")]
+    public async Task<ActionResult<PatientDto>> GetById(Guid id, [FromQuery] bool includeDeleted, CancellationToken cancellationToken)
     {
-        var list = await db.Patients.AsNoTracking()
-            .Where(p => !p.IsDeleted)
-            .OrderBy(p => p.FullName)
-            .Select(p => new PatientDto
-            {
-                Id = p.Id,
-                FullName = p.FullName,
-                BirthDate = p.BirthDate,
-                Gender = p.Gender,
-                Version = p.Version
-            })
-            .ToListAsync(cancellationToken);
-        return Ok(list);
+        var patient = await _patientReadService.GetByIdAsync(id, includeDeleted, cancellationToken);
+
+        if (patient is null)
+            return NotFound();
+
+        return Ok(patient);
+    }
+
+    [HttpPost("search")]
+    public async Task<ActionResult<IReadOnlyList<PatientSummaryDto>>> Search([FromBody] PatientSearchRequest filter, CancellationToken cancellationToken)
+    {
+        var patients = await _patientReadService.SearchAsync(filter, cancellationToken);
+
+        return Ok(patients);
     }
 }

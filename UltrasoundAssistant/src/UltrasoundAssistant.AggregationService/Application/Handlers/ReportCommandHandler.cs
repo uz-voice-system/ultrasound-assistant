@@ -8,6 +8,11 @@ namespace UltrasoundAssistant.AggregationService.Application.Handlers;
 
 public sealed class ReportCommandHandler : CommandHandlerBase
 {
+    private const string AggregateType = "report";
+    private const string ReportCreatedRoutingKey = "report.created";
+    private const string ReportUpdatedRoutingKey = "report.updated";
+    private const string ReportDeletedRoutingKey = "report.deleted";
+
     private readonly IEventStore _eventStore;
 
     public ReportCommandHandler(
@@ -26,31 +31,19 @@ public sealed class ReportCommandHandler : CommandHandlerBase
         {
             ReportCommandValidator.Validate(command);
 
-            var patientHistory = await _eventStore.LoadAggregateEventsAsync("patient", command.PatientId, ct);
-            var patient = new PatientAggregate();
-            patient.LoadFrom(patientHistory);
+            var aggregate = await LoadAggregateAsync(command.ReportId, ct);
 
-            if (!patient.Exists || !patient.IsActive)
-                return CommandResult.NotFound("Patient is missing or inactive");
-
-            var templateHistory = await _eventStore.LoadAggregateEventsAsync("template", command.TemplateId, ct);
-            var template = new TemplateAggregate();
-            template.LoadFrom(templateHistory);
-
-            if (!template.Exists || template.IsDeleted)
-                return CommandResult.NotFound("Template is missing or deleted");
-
-            var reportHistory = await _eventStore.LoadAggregateEventsAsync("report", command.ReportId, ct);
-            var report = new ReportAggregate();
-            report.LoadFrom(reportHistory);
-
-            var @event = report.Create(command.ReportId, command.PatientId, command.DoctorId, command.TemplateId);
+            var @event = aggregate.Create(
+                command.ReportId,
+                command.AppointmentId,
+                command.Status,
+                command.ContentJson);
 
             return await SaveAndPublishAsync(
-                "report",
+                AggregateType,
                 command.ReportId,
-                report.Version,
-                [EventFactory.Create(@event, "report.created")],
+                aggregate.Version,
+                [EventFactory.Create(@event, ReportCreatedRoutingKey)],
                 ct);
         }
         catch (ArgumentException ex)
@@ -63,64 +56,32 @@ public sealed class ReportCommandHandler : CommandHandlerBase
         }
     }
 
-    public async Task<CommandResult> UpdateFieldAsync(UpdateReportFieldCommand command, CancellationToken ct)
+    public async Task<CommandResult> UpdateAsync(UpdateReportCommand command, CancellationToken ct)
     {
         try
         {
             ReportCommandValidator.Validate(command);
 
-            var history = await _eventStore.LoadAggregateEventsAsync("report", command.ReportId, ct);
-            var report = new ReportAggregate();
-            report.LoadFrom(history);
+            var aggregate = await LoadAggregateAsync(command.ReportId, ct);
 
-            if (!report.Exists || report.IsDeleted)
+            if (!aggregate.Exists || aggregate.IsDeleted)
                 return CommandResult.NotFound("Report not found");
 
-            if (command.ExpectedVersion != report.Version)
-                return CommandResult.Conflict($"Concurrency conflict. Expected {command.ExpectedVersion}, actual {report.Version}");
+            if (command.ExpectedVersion != aggregate.Version)
+            {
+                return CommandResult.Conflict(
+                    $"Concurrency conflict. Expected {command.ExpectedVersion}, actual {aggregate.Version}");
+            }
 
-            var @event = report.UpdateField(command.FieldName, command.Value, command.Confidence);
-
-            return await SaveAndPublishAsync(
-                "report",
-                command.ReportId,
-                report.Version,
-                [EventFactory.Create(@event, "report.field.updated")],
-                ct);
-        }
-        catch (ArgumentException ex)
-        {
-            return CommandResult.BadRequest(ex.Message);
-        }
-        catch (DomainException ex)
-        {
-            return CommandResult.BadRequest(ex.Message);
-        }
-    }
-
-    public async Task<CommandResult> CompleteAsync(CompleteReportCommand command, CancellationToken ct)
-    {
-        try
-        {
-            ReportCommandValidator.Validate(command);
-
-            var history = await _eventStore.LoadAggregateEventsAsync("report", command.ReportId, ct);
-            var report = new ReportAggregate();
-            report.LoadFrom(history);
-
-            if (!report.Exists || report.IsDeleted)
-                return CommandResult.NotFound("Report not found");
-
-            if (command.ExpectedVersion != report.Version)
-                return CommandResult.Conflict($"Concurrency conflict. Expected {command.ExpectedVersion}, actual {report.Version}");
-
-            var @event = report.Complete();
+            var @event = aggregate.Update(
+                command.Status,
+                command.ContentJson);
 
             return await SaveAndPublishAsync(
-                "report",
+                AggregateType,
                 command.ReportId,
-                report.Version,
-                [EventFactory.Create(@event, "report.completed")],
+                aggregate.Version,
+                [EventFactory.Create(@event, ReportUpdatedRoutingKey)],
                 ct);
         }
         catch (ArgumentException ex)
@@ -139,23 +100,24 @@ public sealed class ReportCommandHandler : CommandHandlerBase
         {
             ReportCommandValidator.Validate(command);
 
-            var history = await _eventStore.LoadAggregateEventsAsync("report", command.ReportId, ct);
-            var report = new ReportAggregate();
-            report.LoadFrom(history);
+            var aggregate = await LoadAggregateAsync(command.ReportId, ct);
 
-            if (!report.Exists || report.IsDeleted)
+            if (!aggregate.Exists || aggregate.IsDeleted)
                 return CommandResult.NotFound("Report not found");
 
-            if (command.ExpectedVersion != report.Version)
-                return CommandResult.Conflict($"Concurrency conflict. Expected {command.ExpectedVersion}, actual {report.Version}");
+            if (command.ExpectedVersion != aggregate.Version)
+            {
+                return CommandResult.Conflict(
+                    $"Concurrency conflict. Expected {command.ExpectedVersion}, actual {aggregate.Version}");
+            }
 
-            var @event = report.DeleteDraft();
+            var @event = aggregate.Delete();
 
             return await SaveAndPublishAsync(
-                "report",
+                AggregateType,
                 command.ReportId,
-                report.Version,
-                [EventFactory.Create(@event, "report.deleted")],
+                aggregate.Version,
+                [EventFactory.Create(@event, ReportDeletedRoutingKey)],
                 ct);
         }
         catch (ArgumentException ex)
@@ -166,5 +128,18 @@ public sealed class ReportCommandHandler : CommandHandlerBase
         {
             return CommandResult.BadRequest(ex.Message);
         }
+    }
+
+    private async Task<ReportAggregate> LoadAggregateAsync(Guid reportId, CancellationToken ct)
+    {
+        var history = await _eventStore.LoadAggregateEventsAsync(
+            AggregateType,
+            reportId,
+            ct);
+
+        var aggregate = new ReportAggregate();
+        aggregate.LoadFrom(history);
+
+        return aggregate;
     }
 }

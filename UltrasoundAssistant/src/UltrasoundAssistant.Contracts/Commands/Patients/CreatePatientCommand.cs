@@ -1,27 +1,44 @@
-﻿namespace UltrasoundAssistant.Contracts.Commands.Patients;
+﻿using UltrasoundAssistant.Contracts.Entity.Patients;
+
+namespace UltrasoundAssistant.Contracts.Commands.Patients;
 
 /// <summary>
-/// Команда на создание пациента.
+/// Команда создания пациента
 /// </summary>
 public sealed class CreatePatientCommand
 {
     /// <summary>
-    /// Уникальный идентификатор пациента.
+    /// Идентификатор пациента
     /// </summary>
     public Guid PatientId { get; set; }
 
     /// <summary>
-    /// Полное имя пациента.
+    /// ФИО пациента
     /// </summary>
     public string FullName { get; set; } = string.Empty;
 
     /// <summary>
-    /// Дата рождения пациента.
+    /// Дата рождения
     /// </summary>
     public DateTime BirthDate { get; set; }
 
     /// <summary>
-    /// Пол пациента (опционально).
+    /// Пол
     /// </summary>
     public string? Gender { get; set; }
+
+    /// <summary>
+    /// Номер телефона
+    /// </summary>
+    public string? PhoneNumber { get; set; }
+
+    /// <summary>
+    /// Электронная почта
+    /// </summary>
+    public string? Email { get; set; }
+
+    /// <summary>
+    /// Документы пациента
+    /// </summary>
+    public List<PatientDocumentDto> Documents { get; set; } = [];
 }

@@ -16,26 +16,23 @@ public sealed class PatientController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<IActionResult> Create(
-        [FromBody] CreatePatientCommand command, CancellationToken ct)
+    public async Task<IActionResult> Create([FromBody] CreatePatientCommand command, CancellationToken ct)
     {
         var result = await _handler.CreateAsync(command, ct);
         return StatusCode(result.StatusCode, result);
     }
 
     [HttpPut]
-    public async Task<IActionResult> Update(
-        [FromBody] UpdatePatientCommand command, CancellationToken ct)
+    public async Task<IActionResult> Update([FromBody] UpdatePatientCommand command, CancellationToken ct)
     {
         var result = await _handler.UpdateAsync(command, ct);
         return StatusCode(result.StatusCode, result);
     }
 
     [HttpDelete]
-    public async Task<IActionResult> Deactivate(
-        [FromBody] DeactivatePatientCommand command, CancellationToken ct)
+    public async Task<IActionResult> Delete([FromBody] DeletePatientCommand command, CancellationToken ct)
     {
-        var result = await _handler.DeactivateAsync(command, ct);
+        var result = await _handler.DeleteAsync(command, ct);
         return StatusCode(result.StatusCode, result);
     }
 }

@@ -8,6 +8,11 @@ namespace UltrasoundAssistant.AggregationService.Application.Handlers;
 
 public sealed class PatientCommandHandler : CommandHandlerBase
 {
+    private const string AggregateType = "patient";
+    private const string PatientCreatedRoutingKey = "patient.created";
+    private const string PatientUpdatedRoutingKey = "patient.updated";
+    private const string PatientDeletedRoutingKey = "patient.deleted";
+
     private readonly IEventStore _eventStore;
 
     public PatientCommandHandler(
@@ -26,17 +31,22 @@ public sealed class PatientCommandHandler : CommandHandlerBase
         {
             PatientCommandValidator.Validate(command);
 
-            var history = await _eventStore.LoadAggregateEventsAsync("patient", command.PatientId, ct);
-            var aggregate = new PatientAggregate();
-            aggregate.LoadFrom(history);
+            var aggregate = await LoadAggregateAsync(command.PatientId, ct);
 
-            var @event = aggregate.Create(command.PatientId, command.FullName, command.BirthDate, command.Gender);
+            var @event = aggregate.Create(
+                command.PatientId,
+                command.FullName,
+                command.BirthDate,
+                command.Gender,
+                command.PhoneNumber,
+                command.Email,
+                command.Documents);
 
             return await SaveAndPublishAsync(
-                "patient",
+                AggregateType,
                 command.PatientId,
                 aggregate.Version,
-                [EventFactory.Create(@event, "patient.created")],
+                [EventFactory.Create(@event, PatientCreatedRoutingKey)],
                 ct);
         }
         catch (ArgumentException ex)
@@ -55,23 +65,30 @@ public sealed class PatientCommandHandler : CommandHandlerBase
         {
             PatientCommandValidator.Validate(command);
 
-            var history = await _eventStore.LoadAggregateEventsAsync("patient", command.PatientId, ct);
-            var aggregate = new PatientAggregate();
-            aggregate.LoadFrom(history);
+            var aggregate = await LoadAggregateAsync(command.PatientId, ct);
 
-            if (!aggregate.Exists)
+            if (!aggregate.Exists || aggregate.IsDeleted)
                 return CommandResult.NotFound("Patient not found");
 
             if (command.ExpectedVersion != aggregate.Version)
-                return CommandResult.Conflict($"Concurrency conflict. Expected {command.ExpectedVersion}, actual {aggregate.Version}");
+            {
+                return CommandResult.Conflict(
+                    $"Concurrency conflict. Expected {command.ExpectedVersion}, actual {aggregate.Version}");
+            }
 
-            var @event = aggregate.Update(command.FullName, command.BirthDate, command.Gender);
+            var @event = aggregate.Update(
+                command.FullName,
+                command.BirthDate,
+                command.Gender,
+                command.PhoneNumber,
+                command.Email,
+                command.Documents);
 
             return await SaveAndPublishAsync(
-                "patient",
+                AggregateType,
                 command.PatientId,
                 aggregate.Version,
-                [EventFactory.Create(@event, "patient.updated")],
+                [EventFactory.Create(@event, PatientUpdatedRoutingKey)],
                 ct);
         }
         catch (ArgumentException ex)
@@ -84,29 +101,30 @@ public sealed class PatientCommandHandler : CommandHandlerBase
         }
     }
 
-    public async Task<CommandResult> DeactivateAsync(DeactivatePatientCommand command, CancellationToken ct)
+    public async Task<CommandResult> DeleteAsync(DeletePatientCommand command, CancellationToken ct)
     {
         try
         {
             PatientCommandValidator.Validate(command);
 
-            var history = await _eventStore.LoadAggregateEventsAsync("patient", command.PatientId, ct);
-            var aggregate = new PatientAggregate();
-            aggregate.LoadFrom(history);
+            var aggregate = await LoadAggregateAsync(command.PatientId, ct);
 
-            if (!aggregate.Exists)
+            if (!aggregate.Exists || aggregate.IsDeleted)
                 return CommandResult.NotFound("Patient not found");
 
             if (command.ExpectedVersion != aggregate.Version)
-                return CommandResult.Conflict($"Concurrency conflict. Expected {command.ExpectedVersion}, actual {aggregate.Version}");
+            {
+                return CommandResult.Conflict(
+                    $"Concurrency conflict. Expected {command.ExpectedVersion}, actual {aggregate.Version}");
+            }
 
-            var @event = aggregate.Deactivate(command.PatientId, command.Reason);
+            var @event = aggregate.Delete();
 
             return await SaveAndPublishAsync(
-                "patient",
+                AggregateType,
                 command.PatientId,
                 aggregate.Version,
-                [EventFactory.Create(@event, "patient.deactivated")],
+                [EventFactory.Create(@event, PatientDeletedRoutingKey)],
                 ct);
         }
         catch (ArgumentException ex)
@@ -117,5 +135,15 @@ public sealed class PatientCommandHandler : CommandHandlerBase
         {
             return CommandResult.BadRequest(ex.Message);
         }
+    }
+
+    private async Task<PatientAggregate> LoadAggregateAsync(Guid patientId, CancellationToken ct)
+    {
+        var history = await _eventStore.LoadAggregateEventsAsync(AggregateType, patientId, ct);
+
+        var aggregate = new PatientAggregate();
+        aggregate.LoadFrom(history);
+
+        return aggregate;
     }
 }

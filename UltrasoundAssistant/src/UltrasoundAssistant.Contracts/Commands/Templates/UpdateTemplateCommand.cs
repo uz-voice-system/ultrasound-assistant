@@ -2,13 +2,33 @@ using UltrasoundAssistant.Contracts.Entity.Templates;
 
 namespace UltrasoundAssistant.Contracts.Commands.Templates;
 
+/// <summary>
+/// Команда обновления шаблона
+/// </summary>
 public sealed class UpdateTemplateCommand
 {
+    /// <summary>
+    /// Идентификатор шаблона
+    /// </summary>
     public Guid TemplateId { get; set; }
 
-    public int ExpectedVersion { get; set; }
-
+    /// <summary>
+    /// Название шаблона
+    /// </summary>
     public string? Name { get; set; }
 
+    /// <summary>
+    /// Длительность приёма по умолчанию в минутах
+    /// </summary>
+    public int? DefaultAppointmentDurationMinutes { get; set; }
+
+    /// <summary>
+    /// Блоки шаблона
+    /// </summary>
     public List<TemplateBlockDto>? Blocks { get; set; }
+
+    /// <summary>
+    /// Ожидаемая версия агрегата
+    /// </summary>
+    public int ExpectedVersion { get; set; }
 }

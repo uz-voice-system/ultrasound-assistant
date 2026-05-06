@@ -1,10 +1,13 @@
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json.Serialization;
 using UltrasoundAssistant.AggregationService.Extensions;
 using UltrasoundAssistant.AggregationService.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers();
+builder.Services
+    .AddControllers()
+    .AddJsonOptions(options => { options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()); });
 
 builder.Services.AddAggregationInfrastructure(builder.Configuration);
 builder.Services.AddAggregationApplication();

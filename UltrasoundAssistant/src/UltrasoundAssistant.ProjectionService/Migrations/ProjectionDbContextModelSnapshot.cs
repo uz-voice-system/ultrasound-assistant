@@ -22,7 +22,119 @@ namespace UltrasoundAssistant.ProjectionService.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Entities.PatientReadModel", b =>
+            modelBuilder.Entity("UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Entities.AppointmentReadModel", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Comment")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("DoctorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("EndAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("PatientId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("StartAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<Guid>("TemplateId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("IsDeleted");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("TemplateId");
+
+                    b.HasIndex("PatientId", "StartAtUtc");
+
+                    b.HasIndex("DoctorId", "StartAtUtc", "EndAtUtc");
+
+                    b.ToTable("appointments", (string)null);
+                });
+
+            modelBuilder.Entity("UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Entities.Patients.PatientDocumentReadModel", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("DepartmentCode")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("DocumentType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<DateTime?>("IssueDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("IssuedBy")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Number")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Organization")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<Guid>("PatientId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Series")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Number");
+
+                    b.HasIndex("PatientId", "DocumentType")
+                        .IsUnique();
+
+                    b.HasIndex("DocumentType", "Series", "Number");
+
+                    b.ToTable("patient_documents", (string)null);
+                });
+
+            modelBuilder.Entity("UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Entities.Patients.PatientReadModel", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -30,6 +142,10 @@ namespace UltrasoundAssistant.ProjectionService.Migrations
 
                     b.Property<DateTime>("BirthDate")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
 
                     b.Property<string>("FullName")
                         .IsRequired()
@@ -43,10 +159,20 @@ namespace UltrasoundAssistant.ProjectionService.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("PhoneNumber")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
                     b.Property<int>("Version")
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("BirthDate");
+
+                    b.HasIndex("FullName");
+
+                    b.HasIndex("PhoneNumber");
 
                     b.ToTable("patients", (string)null);
                 });
@@ -57,28 +183,23 @@ namespace UltrasoundAssistant.ProjectionService.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<Guid>("AppointmentId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("ContentJson")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("jsonb");
 
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid>("DoctorId")
-                        .HasColumnType("uuid");
-
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
-                    b.Property<Guid>("PatientId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("Status")
+                    b.Property<string>("Status")
+                        .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("integer");
-
-                    b.Property<Guid>("TemplateId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("character varying(50)");
 
                     b.Property<DateTime>("UpdatedAtUtc")
                         .HasColumnType("timestamp with time zone");
@@ -88,9 +209,14 @@ namespace UltrasoundAssistant.ProjectionService.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("PatientId");
+                    b.HasIndex("AppointmentId")
+                        .IsUnique();
 
-                    b.HasIndex("TemplateId");
+                    b.HasIndex("CreatedAtUtc");
+
+                    b.HasIndex("IsDeleted");
+
+                    b.HasIndex("Status");
 
                     b.ToTable("reports", (string)null);
                 });
@@ -113,6 +239,8 @@ namespace UltrasoundAssistant.ProjectionService.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Phrase");
+
                     b.HasIndex("BlockId", "Phrase")
                         .IsUnique();
 
@@ -131,8 +259,8 @@ namespace UltrasoundAssistant.ProjectionService.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
 
                     b.Property<int>("Position")
                         .HasColumnType("integer");
@@ -144,7 +272,8 @@ namespace UltrasoundAssistant.ProjectionService.Migrations
 
                     b.HasIndex("TemplateId", "Name");
 
-                    b.HasIndex("TemplateId", "Position");
+                    b.HasIndex("TemplateId", "Position")
+                        .IsUnique();
 
                     b.ToTable("template_blocks", (string)null);
                 });
@@ -167,6 +296,8 @@ namespace UltrasoundAssistant.ProjectionService.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Phrase");
+
                     b.HasIndex("FieldId", "Phrase")
                         .IsUnique();
 
@@ -184,8 +315,8 @@ namespace UltrasoundAssistant.ProjectionService.Migrations
 
                     b.Property<string>("DisplayName")
                         .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
 
                     b.Property<string>("FieldName")
                         .IsRequired()
@@ -193,10 +324,10 @@ namespace UltrasoundAssistant.ProjectionService.Migrations
                         .HasColumnType("character varying(200)");
 
                     b.Property<decimal?>("NormMax")
-                        .HasColumnType("numeric(10,2)");
+                        .HasColumnType("numeric(18, 4)");
 
                     b.Property<decimal?>("NormMin")
-                        .HasColumnType("numeric(10,2)");
+                        .HasColumnType("numeric(18, 4)");
 
                     b.Property<string>("NormNormalText")
                         .HasMaxLength(500)
@@ -209,15 +340,27 @@ namespace UltrasoundAssistant.ProjectionService.Migrations
                     b.Property<int>("Position")
                         .HasColumnType("integer");
 
-                    b.Property<int>("Type")
-                        .HasColumnType("integer");
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Role");
+
+                    b.HasIndex("Type");
 
                     b.HasIndex("BlockId", "FieldName")
                         .IsUnique();
 
-                    b.HasIndex("BlockId", "Position");
+                    b.HasIndex("BlockId", "Position")
+                        .IsUnique();
 
                     b.ToTable("template_fields", (string)null);
                 });
@@ -228,22 +371,187 @@ namespace UltrasoundAssistant.ProjectionService.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<int>("DefaultAppointmentDurationMinutes")
+                        .HasColumnType("integer");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
 
                     b.Property<int>("Version")
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
 
+                    b.HasIndex("IsDeleted");
+
                     b.HasIndex("Name");
 
                     b.ToTable("templates", (string)null);
+                });
+
+            modelBuilder.Entity("UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Entities.Users.DoctorProfileReadModel", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Cabinet")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("PhoneExtension")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("Specialization")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("UserId");
+
+                    b.ToTable("doctor_profiles", (string)null);
+                });
+
+            modelBuilder.Entity("UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Entities.Users.UserReadModel", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Login")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FullName");
+
+                    b.HasIndex("IsActive");
+
+                    b.HasIndex("Login")
+                        .IsUnique();
+
+                    b.HasIndex("Role");
+
+                    b.ToTable("users", (string)null);
+                });
+
+            modelBuilder.Entity("UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Entities.Users.UserScheduleReadModel", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("DayOfWeek")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<TimeSpan>("EndTime")
+                        .HasColumnType("interval");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("boolean");
+
+                    b.Property<TimeSpan>("StartTime")
+                        .HasColumnType("interval");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsDeleted");
+
+                    b.HasIndex("UserId", "DayOfWeek");
+
+                    b.ToTable("user_schedules", (string)null);
+                });
+
+            modelBuilder.Entity("UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Entities.AppointmentReadModel", b =>
+                {
+                    b.HasOne("UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Entities.Users.UserReadModel", "CreatedByUser")
+                        .WithMany("CreatedAppointments")
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Entities.Users.UserReadModel", "Doctor")
+                        .WithMany("DoctorAppointments")
+                        .HasForeignKey("DoctorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Entities.Patients.PatientReadModel", "Patient")
+                        .WithMany("Appointments")
+                        .HasForeignKey("PatientId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Entities.Templates.TemplateReadModel", "Template")
+                        .WithMany("Appointments")
+                        .HasForeignKey("TemplateId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("Doctor");
+
+                    b.Navigation("Patient");
+
+                    b.Navigation("Template");
+                });
+
+            modelBuilder.Entity("UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Entities.Patients.PatientDocumentReadModel", b =>
+                {
+                    b.HasOne("UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Entities.Patients.PatientReadModel", "Patient")
+                        .WithMany("Documents")
+                        .HasForeignKey("PatientId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Patient");
+                });
+
+            modelBuilder.Entity("UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Entities.ReportReadModel", b =>
+                {
+                    b.HasOne("UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Entities.AppointmentReadModel", "Appointment")
+                        .WithOne("Report")
+                        .HasForeignKey("UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Entities.ReportReadModel", "AppointmentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Appointment");
                 });
 
             modelBuilder.Entity("UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Entities.Templates.TemplateBlockPhraseReadModel", b =>
@@ -290,6 +598,40 @@ namespace UltrasoundAssistant.ProjectionService.Migrations
                     b.Navigation("Block");
                 });
 
+            modelBuilder.Entity("UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Entities.Users.DoctorProfileReadModel", b =>
+                {
+                    b.HasOne("UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Entities.Users.UserReadModel", "User")
+                        .WithOne("DoctorProfile")
+                        .HasForeignKey("UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Entities.Users.DoctorProfileReadModel", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Entities.Users.UserScheduleReadModel", b =>
+                {
+                    b.HasOne("UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Entities.Users.UserReadModel", "User")
+                        .WithMany("Schedules")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Entities.AppointmentReadModel", b =>
+                {
+                    b.Navigation("Report");
+                });
+
+            modelBuilder.Entity("UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Entities.Patients.PatientReadModel", b =>
+                {
+                    b.Navigation("Appointments");
+
+                    b.Navigation("Documents");
+                });
+
             modelBuilder.Entity("UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Entities.Templates.TemplateBlockReadModel", b =>
                 {
                     b.Navigation("Fields");
@@ -304,7 +646,20 @@ namespace UltrasoundAssistant.ProjectionService.Migrations
 
             modelBuilder.Entity("UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Entities.Templates.TemplateReadModel", b =>
                 {
+                    b.Navigation("Appointments");
+
                     b.Navigation("Blocks");
+                });
+
+            modelBuilder.Entity("UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Entities.Users.UserReadModel", b =>
+                {
+                    b.Navigation("CreatedAppointments");
+
+                    b.Navigation("DoctorAppointments");
+
+                    b.Navigation("DoctorProfile");
+
+                    b.Navigation("Schedules");
                 });
 #pragma warning restore 612, 618
         }
