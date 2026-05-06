@@ -1,10 +1,17 @@
 ﻿using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace UltrasoundAssistant.ApiGateway.Services;
 
 public sealed class VoiceProcessingApiClient
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        Converters =
+        {
+            new JsonStringEnumConverter()
+        }
+    };
     private readonly HttpClient _httpClient;
 
     public VoiceProcessingApiClient(HttpClient httpClient)

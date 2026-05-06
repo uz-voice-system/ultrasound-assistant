@@ -11,13 +11,16 @@ public sealed class ReportsController : GatewayControllerBase
 {
     private readonly AggregationApiClient _aggregationClient;
     private readonly ProjectionApiClient _projectionClient;
+    private readonly ReportGeneratorClient _reportGeneratorClient;
 
     public ReportsController(
         AggregationApiClient aggregationClient,
-        ProjectionApiClient projectionClient)
+        ProjectionApiClient projectionClient,
+        ReportGeneratorClient reportGeneratorClient)
     {
         _aggregationClient = aggregationClient;
         _projectionClient = projectionClient;
+        _reportGeneratorClient = reportGeneratorClient;
     }
 
     [HttpPost]
@@ -63,5 +66,26 @@ public sealed class ReportsController : GatewayControllerBase
         var result = await _projectionClient.PostAsync("/api/read/reports/search", filter, ct);
 
         return ProxyJson(result.StatusCode, result.Content);
+    }
+
+    [HttpGet("{id:guid}/pdf")]
+    [Produces("application/pdf")]
+    public async Task<IActionResult> GeneratePdf(
+        Guid id,
+        CancellationToken ct)
+    {
+        var result = await _reportGeneratorClient.GetReportPdfAsync(id, ct);
+
+        if (result.StatusCode is >= 200 and < 300)
+        {
+            return File(
+                result.Content,
+                result.ContentType,
+                result.FileName);
+        }
+
+        var errorContent = System.Text.Encoding.UTF8.GetString(result.Content);
+
+        return ProxyJson(result.StatusCode, errorContent);
     }
 }

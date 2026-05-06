@@ -1,11 +1,18 @@
 ﻿using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace UltrasoundAssistant.ApiGateway.Services;
 
 public sealed class ProjectionApiClient
 {
     private readonly HttpClient _httpClient;
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        Converters =
+        {
+            new JsonStringEnumConverter()
+        }
+    };
 
     public ProjectionApiClient(HttpClient httpClient)
     {

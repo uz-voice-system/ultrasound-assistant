@@ -1,9 +1,10 @@
-﻿using System.IdentityModel.Tokens.Jwt;
+﻿using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
-using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.Tokens;
+using System.Text.Json.Serialization;
 using UltrasoundAssistant.ApiGateway.Options;
 using UltrasoundAssistant.Contracts.Auth;
 
@@ -11,7 +12,13 @@ namespace UltrasoundAssistant.ApiGateway.Services;
 
 public sealed class AuthService
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        Converters =
+        {
+            new JsonStringEnumConverter()
+        }
+    };
 
     private readonly ProjectionApiClient _projectionClient;
     private readonly JwtOptions _jwtOptions;

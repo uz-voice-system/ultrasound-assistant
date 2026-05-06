@@ -1,11 +1,18 @@
 ﻿using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace UltrasoundAssistant.ApiGateway.Services;
 
 public sealed class AggregationApiClient
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        Converters =
+        {
+            new JsonStringEnumConverter()
+        }
+    };
     private readonly HttpClient _httpClient;
 
     public AggregationApiClient(HttpClient httpClient)

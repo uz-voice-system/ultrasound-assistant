@@ -1,4 +1,5 @@
 ﻿using System.Text.Json;
+using System.Text.Json.Serialization;
 using UltrasoundAssistant.Contracts.Reads.Templates.Details;
 using UltrasoundAssistant.VoiceProcessingService.Application.Abstractions;
 
@@ -6,7 +7,13 @@ namespace UltrasoundAssistant.VoiceProcessingService.Services.Templates;
 
 public sealed class TemplateLookupService : ITemplateLookupService
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+    {
+        Converters =
+        {
+            new JsonStringEnumConverter()
+        }
+    };
     private readonly HttpClient _httpClient;
 
     public TemplateLookupService(HttpClient httpClient)

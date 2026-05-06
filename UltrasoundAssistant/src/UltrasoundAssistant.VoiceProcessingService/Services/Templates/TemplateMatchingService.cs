@@ -2,6 +2,8 @@
 using UltrasoundAssistant.Contracts.Reads.Templates.Details;
 using UltrasoundAssistant.Contracts.VoiceProcessing;
 using UltrasoundAssistant.VoiceProcessingService.Application.Abstractions;
+using UltrasoundAssistant.VoiceProcessingService.Domain.Matching.Commands;
+using UltrasoundAssistant.VoiceProcessingService.Domain.Matching.Generation;
 using UltrasoundAssistant.VoiceProcessingService.Domain.Matching.Keywords;
 using UltrasoundAssistant.VoiceProcessingService.Domain.Matching.Models;
 using UltrasoundAssistant.VoiceProcessingService.Domain.Matching.Text;
@@ -21,17 +23,23 @@ public sealed class TemplateMatchingService : ITemplateMatchingService
     private readonly IKeywordMatcher _keywordMatcher;
     private readonly IValueExtractor _valueExtractor;
     private readonly IValueNormalizer _valueNormalizer;
+    private readonly IReportAutoTextGenerator _autoTextGenerator;
+    private readonly VoicePauseTextProcessor _pauseTextProcessor;
 
     public TemplateMatchingService(
         ITextNormalizer textNormalizer,
         IKeywordMatcher keywordMatcher,
         IValueExtractor valueExtractor,
-        IValueNormalizer valueNormalizer)
+        IValueNormalizer valueNormalizer,
+        IReportAutoTextGenerator autoTextGenerator,
+        VoicePauseTextProcessor pauseTextProcessor)
     {
         _textNormalizer = textNormalizer;
         _keywordMatcher = keywordMatcher;
         _valueExtractor = valueExtractor;
         _valueNormalizer = valueNormalizer;
+        _autoTextGenerator = autoTextGenerator;
+        _pauseTextProcessor = pauseTextProcessor;
     }
 
     /// <inheritdoc />
@@ -55,7 +63,10 @@ public sealed class TemplateMatchingService : ITemplateMatchingService
             };
         }
 
-        var tokens = _textNormalizer.Tokenize(recognizedText);
+        var pauseProcessing = _pauseTextProcessor.Process(recognizedText);
+        var textForMatching = pauseProcessing.ProcessedText;
+
+        var tokens = _textNormalizer.Tokenize(textForMatching);
 
         if (tokens.Count == 0)
         {
@@ -85,6 +96,8 @@ public sealed class TemplateMatchingService : ITemplateMatchingService
             result.Matched = false;
             result.Error = "Keywords found, but no values extracted";
         }
+
+        _autoTextGenerator.FillMissingAutoFields(result, template);
 
         return result;
     }

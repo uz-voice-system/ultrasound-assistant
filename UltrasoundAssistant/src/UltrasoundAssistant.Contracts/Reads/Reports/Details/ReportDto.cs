@@ -29,6 +29,16 @@ public sealed class ReportDto
     public string PatientFullName { get; set; } = string.Empty;
 
     /// <summary>
+    /// Дата рождения пациента.
+    /// </summary>
+    public DateTime? PatientBirthDate { get; set; }
+
+    /// <summary>
+    /// Пол пациента.
+    /// </summary>
+    public string? PatientGender { get; set; }
+
+    /// <summary>
     /// Идентификатор врача.
     /// Получается через запись на приём.
     /// </summary>
@@ -49,6 +59,16 @@ public sealed class ReportDto
     /// Название шаблона.
     /// </summary>
     public string TemplateName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Дата и время начала приёма.
+    /// </summary>
+    public DateTime? AppointmentStartAtUtc { get; set; }
+
+    /// <summary>
+    /// Дата и время окончания приёма.
+    /// </summary>
+    public DateTime? AppointmentEndAtUtc { get; set; }
 
     /// <summary>
     /// Статус отчёта.

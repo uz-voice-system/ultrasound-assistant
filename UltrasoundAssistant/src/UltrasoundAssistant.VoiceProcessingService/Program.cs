@@ -1,6 +1,8 @@
 using UltrasoundAssistant.VoiceProcessingService.Application.Abstractions;
 using UltrasoundAssistant.VoiceProcessingService.Application.Validation;
 using UltrasoundAssistant.VoiceProcessingService.Domain.Matching;
+using UltrasoundAssistant.VoiceProcessingService.Domain.Matching.Commands;
+using UltrasoundAssistant.VoiceProcessingService.Domain.Matching.Generation;
 using UltrasoundAssistant.VoiceProcessingService.Domain.Matching.Keywords;
 using UltrasoundAssistant.VoiceProcessingService.Domain.Matching.Numbers;
 using UltrasoundAssistant.VoiceProcessingService.Domain.Matching.Text;
@@ -44,7 +46,9 @@ builder.Services.AddSingleton<INumberParser, RussianNumberParser>();
 builder.Services.AddSingleton<IValueNormalizer, MedicalValueNormalizer>();
 
 builder.Services.AddScoped<IVoiceProcessingUseCase, VoiceProcessingUseCase>();
+builder.Services.AddScoped<IReportAutoTextGenerator, ReportAutoTextGenerator>();
 builder.Services.AddScoped<VoiceProcessRequestValidator>();
+builder.Services.AddScoped<VoicePauseTextProcessor>();
 
 builder.Services.AddScoped<ITemplateMatchingService, TemplateMatchingService>();
 builder.Services.AddScoped<IWhisperTranscriptionService, WhisperTranscriptionService>();
