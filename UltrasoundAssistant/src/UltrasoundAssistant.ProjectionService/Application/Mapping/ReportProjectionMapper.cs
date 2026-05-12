@@ -24,6 +24,13 @@ public sealed class ReportProjectionMapper
             AppointmentEndAtUtc = model.Appointment.EndAtUtc,
             Status = model.Status,
             ContentJson = model.ContentJson,
+            HasUltrasoundImage = model.UltrasoundImageBytes is { Length: > 0 },
+            UltrasoundImageFileName = model.UltrasoundImageFileName,
+            UltrasoundImageContentType = model.UltrasoundImageContentType,
+            UltrasoundImageBase64 = model.UltrasoundImageBytes is { Length: > 0 }
+                ? Convert.ToBase64String(model.UltrasoundImageBytes)
+                : null,
+            UltrasoundImageUploadedAtUtc = model.UltrasoundImageUploadedAtUtc,
             IsDeleted = model.IsDeleted,
             CreatedAtUtc = model.CreatedAtUtc,
             UpdatedAtUtc = model.UpdatedAtUtc,

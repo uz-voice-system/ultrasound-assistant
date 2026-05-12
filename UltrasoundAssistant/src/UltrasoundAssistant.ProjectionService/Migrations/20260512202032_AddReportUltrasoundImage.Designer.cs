@@ -2,18 +2,21 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using UltrasoundAssistant.ProjectionService.Infrastructure.Persistence;
 
 #nullable disable
 
-namespace UltrasoundAssistant.ProjectionService.Migrations
+namespace UltrasoundAssistant.ProjectionService.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(ProjectionDbContext))]
-    partial class ProjectionDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260512202032_AddReportUltrasoundImage")]
+    partial class AddReportUltrasoundImage
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

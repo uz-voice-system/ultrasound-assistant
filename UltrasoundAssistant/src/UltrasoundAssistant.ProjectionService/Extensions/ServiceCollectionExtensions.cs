@@ -42,6 +42,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAppointmentReadRepository, AppointmentReadRepository>();
         services.AddScoped<IReportReadRepository, ReportReadRepository>();
         services.AddScoped<ITemplateReadRepository, TemplateReadRepository>();
+        services.AddScoped<IAdminStatisticsReadRepository, AdminStatisticsReadRepository>();
 
         services.AddScoped<IPatientReadService, PatientReadService>();
         services.AddScoped<IUserReadService, UserReadService>();
@@ -50,6 +51,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IReportReadService, ReportReadService>();
         services.AddScoped<ITemplateReadService, TemplateReadService>();
         services.AddScoped<IAuthReadService, AuthReadService>();
+        services.AddScoped<IAdminStatisticsReadService, AdminStatisticsReadService>();
 
         services.AddScoped<PatientProjectionMapper>();
         services.AddScoped<UserProjectionMapper>();
@@ -76,6 +78,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IIntegrationEventHandler, ReportCreatedEventHandler>();
         services.AddScoped<IIntegrationEventHandler, ReportUpdatedEventHandler>();
         services.AddScoped<IIntegrationEventHandler, ReportDeletedEventHandler>();
+        services.AddScoped<IIntegrationEventHandler, ReportImageUploadedEventHandler>();
+        services.AddScoped<IIntegrationEventHandler, ReportImageDeletedEventHandler>();
 
         services.AddScoped<IIntegrationEventHandler, TemplateCreatedEventHandler>();
         services.AddScoped<IIntegrationEventHandler, TemplateUpdatedEventHandler>();

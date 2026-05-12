@@ -18,6 +18,7 @@ builder.Services.Configure<CompanyOptions>(
     builder.Configuration.GetSection("Company"));
 
 builder.Services.AddSingleton<IReportPdfGenerator, ReportPdfGenerator>();
+builder.Services.AddScoped<IAdminStatisticsPdfGenerator, AdminStatisticsPdfGenerator>();
 
 var app = builder.Build();
 

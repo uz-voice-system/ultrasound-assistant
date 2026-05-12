@@ -10,5 +10,5 @@ public interface ITemplateReadService
 
     Task<IReadOnlyList<TemplateSummaryDto>> SearchForDoctorAsync(TemplateSearchRequest filter, CancellationToken cancellationToken);
 
-    Task<IReadOnlyList<TemplateSummaryDto>> SearchForAdminAsync(TemplateAdminSearchRequest filter, CancellationToken cancellationToken);
+    Task<IReadOnlyList<TemplateAdminSearchResultDto>> SearchForAdminAsync(TemplateAdminSearchRequest filter, CancellationToken cancellationToken);
 }

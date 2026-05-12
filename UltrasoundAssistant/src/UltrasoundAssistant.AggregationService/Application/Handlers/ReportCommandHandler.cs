@@ -12,6 +12,8 @@ public sealed class ReportCommandHandler : CommandHandlerBase
     private const string ReportCreatedRoutingKey = "report.created";
     private const string ReportUpdatedRoutingKey = "report.updated";
     private const string ReportDeletedRoutingKey = "report.deleted";
+    private const string ReportImageUploadedRoutingKey = "report.image.uploaded";
+    private const string ReportImageDeletedRoutingKey = "report.image.deleted";
 
     private readonly IEventStore _eventStore;
 
@@ -118,6 +120,81 @@ public sealed class ReportCommandHandler : CommandHandlerBase
                 command.ReportId,
                 aggregate.Version,
                 [EventFactory.Create(@event, ReportDeletedRoutingKey)],
+                ct);
+        }
+        catch (ArgumentException ex)
+        {
+            return CommandResult.BadRequest(ex.Message);
+        }
+        catch (DomainException ex)
+        {
+            return CommandResult.BadRequest(ex.Message);
+        }
+    }
+
+    public async Task<CommandResult> UploadImageAsync(UploadReportImageCommand command, CancellationToken ct)
+    {
+        try
+        {
+            ReportCommandValidator.Validate(command);
+
+            var aggregate = await LoadAggregateAsync(command.ReportId, ct);
+
+            if (!aggregate.Exists || aggregate.IsDeleted)
+                return CommandResult.NotFound("Report not found");
+
+            if (command.ExpectedVersion != aggregate.Version)
+            {
+                return CommandResult.Conflict(
+                    $"Concurrency conflict. Expected {command.ExpectedVersion}, actual {aggregate.Version}");
+            }
+
+            var @event = aggregate.UploadImage(
+                command.FileName,
+                command.ContentType,
+                command.ImageBase64);
+
+            return await SaveAndPublishAsync(
+                AggregateType,
+                command.ReportId,
+                aggregate.Version,
+                [EventFactory.Create(@event, ReportImageUploadedRoutingKey)],
+                ct);
+        }
+        catch (ArgumentException ex)
+        {
+            return CommandResult.BadRequest(ex.Message);
+        }
+        catch (DomainException ex)
+        {
+            return CommandResult.BadRequest(ex.Message);
+        }
+    }
+
+    public async Task<CommandResult> DeleteImageAsync(DeleteReportImageCommand command, CancellationToken ct)
+    {
+        try
+        {
+            ReportCommandValidator.Validate(command);
+
+            var aggregate = await LoadAggregateAsync(command.ReportId, ct);
+
+            if (!aggregate.Exists || aggregate.IsDeleted)
+                return CommandResult.NotFound("Report not found");
+
+            if (command.ExpectedVersion != aggregate.Version)
+            {
+                return CommandResult.Conflict(
+                    $"Concurrency conflict. Expected {command.ExpectedVersion}, actual {aggregate.Version}");
+            }
+
+            var @event = aggregate.DeleteImage();
+
+            return await SaveAndPublishAsync(
+                AggregateType,
+                command.ReportId,
+                aggregate.Version,
+                [EventFactory.Create(@event, ReportImageDeletedRoutingKey)],
                 ct);
         }
         catch (ArgumentException ex)

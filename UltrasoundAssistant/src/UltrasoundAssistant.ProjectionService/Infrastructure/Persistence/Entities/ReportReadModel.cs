@@ -12,6 +12,14 @@ public sealed class ReportReadModel
 
     public string ContentJson { get; set; } = "{}";
 
+    public byte[]? UltrasoundImageBytes { get; set; }
+
+    public string? UltrasoundImageFileName { get; set; }
+
+    public string? UltrasoundImageContentType { get; set; }
+
+    public DateTime? UltrasoundImageUploadedAtUtc { get; set; }
+
     public bool IsDeleted { get; set; }
 
     public DateTime CreatedAtUtc { get; set; }

@@ -131,7 +131,7 @@ public sealed class ReportPdfGenerator : IReportPdfGenerator
                     .Text(recommendation);
             }
 
-            column.Item().Element(ComposeUltrasoundImagePlaceholder);
+            column.Item().Element(c => ComposeUltrasoundImage(c, report));
 
             column.Item().PaddingTop(25).AlignRight().Column(doctor =>
             {
@@ -292,7 +292,7 @@ public sealed class ReportPdfGenerator : IReportPdfGenerator
         });
     }
 
-    private static void ComposeUltrasoundImagePlaceholder(IContainer container)
+    private static void ComposeUltrasoundImage(IContainer container, ReportDto report)
     {
         container.Column(column =>
         {
@@ -302,17 +302,47 @@ public sealed class ReportPdfGenerator : IReportPdfGenerator
                 .Bold()
                 .FontSize(13);
 
+            var imageBytes = TryGetImageBytes(report);
+
+            if (imageBytes is null)
+            {
+                column.Item()
+                    .Height(180)
+                    .Border(1)
+                    .BorderColor(Colors.Grey.Medium)
+                    .Background(Colors.Grey.Lighten4)
+                    .AlignCenter()
+                    .AlignMiddle()
+                    .Text("Изображение УЗИ будет добавлено позже")
+                    .FontColor(Colors.Grey.Darken1)
+                    .FontSize(12);
+
+                return;
+            }
+
             column.Item()
-                .Height(180)
+                .Height(240)
                 .Border(1)
                 .BorderColor(Colors.Grey.Medium)
-                .Background(Colors.Grey.Lighten4)
-                .AlignCenter()
-                .AlignMiddle()
-                .Text("Изображение УЗИ будет добавлено позже")
-                .FontColor(Colors.Grey.Darken1)
-                .FontSize(12);
+                .Padding(5)
+                .Image(imageBytes)
+                .FitArea();
         });
+    }
+
+    private static byte[]? TryGetImageBytes(ReportDto report)
+    {
+        if (string.IsNullOrWhiteSpace(report.UltrasoundImageBase64))
+            return null;
+
+        try
+        {
+            return Convert.FromBase64String(report.UltrasoundImageBase64);
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private void ComposeFooter(IContainer container)
@@ -477,9 +507,14 @@ public sealed class ReportPdfGenerator : IReportPdfGenerator
 
     private static string FormatDateTime(DateTime? date)
     {
-        return date.HasValue
-            ? date.Value.ToString("dd.MM.yyyy HH:mm")
-            : "—";
+        if (!date.HasValue)
+            return "—";
+
+        var value = date.Value.Kind == DateTimeKind.Utc
+            ? date.Value.ToLocalTime()
+            : date.Value;
+
+        return value.ToString("dd.MM.yyyy HH:mm");
     }
 
     private static string FormatGender(string? gender)

@@ -23,6 +23,16 @@ public static class ServiceCollectionExtensions
             client.BaseAddress = new Uri(projectionBaseUrl);
         });
 
+        services.AddHttpClient<IStatisticsDataClient, StatisticsDataClient>(client =>
+        {
+            client.BaseAddress = new Uri(projectionBaseUrl);
+        });
+
+        services.AddHttpClient<IStatisticsDataClient, StatisticsDataClient>(client =>
+        {
+            client.BaseAddress = new Uri(projectionBaseUrl);
+        });
+
         return services;
     }
 }

@@ -21,6 +21,16 @@ public sealed class ReportAggregate
 
     public string ContentJson { get; private set; } = "{}";
 
+    public bool HasUltrasoundImage { get; private set; }
+
+    public string? UltrasoundImageFileName { get; private set; }
+
+    public string? UltrasoundImageContentType { get; private set; }
+
+    public string? UltrasoundImageBase64 { get; private set; }
+
+    public DateTime? UltrasoundImageUploadedAtUtc { get; private set; }
+
     public ReportCreatedEvent Create(
         Guid reportId,
         Guid appointmentId,
@@ -127,6 +137,69 @@ public sealed class ReportAggregate
                     Version = e.Version;
                     break;
                 }
+
+            case nameof(ReportImageUploadedEvent):
+                {
+                    var e = JsonSerializer.Deserialize<ReportImageUploadedEvent>(
+                                record.Payload,
+                                JsonDefaults.Web)
+                            ?? throw new InvalidOperationException("Invalid ReportImageUploadedEvent payload");
+
+                    HasUltrasoundImage = true;
+                    UltrasoundImageFileName = e.FileName;
+                    UltrasoundImageContentType = e.ContentType;
+                    UltrasoundImageBase64 = e.ImageBase64;
+                    UltrasoundImageUploadedAtUtc = e.UploadedAtUtc;
+                    Version = e.Version;
+                    break;
+                }
+
+            case nameof(ReportImageDeletedEvent):
+                {
+                    var e = JsonSerializer.Deserialize<ReportImageDeletedEvent>(
+                                record.Payload,
+                                JsonDefaults.Web)
+                            ?? throw new InvalidOperationException("Invalid ReportImageDeletedEvent payload");
+
+                    HasUltrasoundImage = false;
+                    UltrasoundImageFileName = null;
+                    UltrasoundImageContentType = null;
+                    UltrasoundImageBase64 = null;
+                    UltrasoundImageUploadedAtUtc = null;
+                    Version = e.Version;
+                    break;
+                }
         }
+    }
+
+    public ReportImageUploadedEvent UploadImage(string fileName, string contentType, string imageBase64)
+    {
+        if (!Exists || IsDeleted)
+            throw new DomainException("Report not found");
+
+        return new ReportImageUploadedEvent
+        {
+            ReportId = Id,
+            FileName = fileName.Trim(),
+            ContentType = contentType.Trim(),
+            ImageBase64 = imageBase64.Trim(),
+            UploadedAtUtc = DateTime.UtcNow,
+            Version = Version + 1
+        };
+    }
+
+    public ReportImageDeletedEvent DeleteImage()
+    {
+        if (!Exists || IsDeleted)
+            throw new DomainException("Report not found");
+
+        if (!HasUltrasoundImage)
+            throw new DomainException("Report image not found");
+
+        return new ReportImageDeletedEvent
+        {
+            ReportId = Id,
+            Version = Version + 1
+        };
     }
 }

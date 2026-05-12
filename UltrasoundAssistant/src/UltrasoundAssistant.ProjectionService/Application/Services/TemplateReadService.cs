@@ -30,11 +30,9 @@ public sealed class TemplateReadService : ITemplateReadService
         return templates.Select(_mapper.MapSummary).ToList();
     }
 
-    public async Task<IReadOnlyList<TemplateSummaryDto>> SearchForAdminAsync(
-        TemplateAdminSearchRequest filter,
-        CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<TemplateAdminSearchResultDto>> SearchForAdminAsync(TemplateAdminSearchRequest filter, CancellationToken cancellationToken)
     {
         var templates = await _repository.SearchForAdminAsync(filter, cancellationToken);
-        return templates.Select(_mapper.MapSummary).ToList();
+        return templates.Select(template => _mapper.MapAdminSearchResult(template, filter)).ToList();
     }
 }

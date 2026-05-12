@@ -35,4 +35,18 @@ public sealed class ReportController : ControllerBase
         var result = await _handler.DeleteAsync(command, ct);
         return StatusCode(result.StatusCode, result);
     }
+
+    [HttpPut("image")]
+    public async Task<IActionResult> UploadImage([FromBody] UploadReportImageCommand command, CancellationToken ct)
+    {
+        var result = await _handler.UploadImageAsync(command, ct);
+        return StatusCode(result.StatusCode, result);
+    }
+
+    [HttpDelete("image")]
+    public async Task<IActionResult> DeleteImage([FromBody] DeleteReportImageCommand command, CancellationToken ct)
+    {
+        var result = await _handler.DeleteImageAsync(command, ct);
+        return StatusCode(result.StatusCode, result);
+    }
 }

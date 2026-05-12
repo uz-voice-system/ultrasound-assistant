@@ -37,7 +37,7 @@ public sealed class TemplatesReadController : ControllerBase
     }
 
     [HttpPost("search-admin")]
-    public async Task<ActionResult<IReadOnlyList<TemplateSummaryDto>>> SearchForAdmin([FromBody] TemplateAdminSearchRequest filter, CancellationToken cancellationToken)
+    public async Task<ActionResult<IReadOnlyList<TemplateAdminSearchResultDto>>> SearchForAdmin([FromBody] TemplateAdminSearchRequest filter, CancellationToken cancellationToken)
     {
         var templates = await _templateReadService.SearchForAdminAsync(filter, cancellationToken);
 

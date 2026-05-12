@@ -368,6 +368,17 @@ public sealed class ProjectionDbContext : DbContext
             .HasForeignKey<ReportReadModel>(x => x.AppointmentId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        entity.Property(x => x.UltrasoundImageBytes)
+            .HasColumnType("bytea");
+
+        entity.Property(x => x.UltrasoundImageFileName)
+            .HasMaxLength(255);
+
+        entity.Property(x => x.UltrasoundImageContentType)
+            .HasMaxLength(100);
+
+        entity.Property(x => x.UltrasoundImageUploadedAtUtc);
+
         entity.HasIndex(x => x.AppointmentId).IsUnique();
         entity.HasIndex(x => x.Status);
         entity.HasIndex(x => x.IsDeleted);
