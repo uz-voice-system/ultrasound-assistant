@@ -150,6 +150,9 @@ services:
       RabbitMq__Username: admin
       RabbitMq__Password: admin
       RabbitMq__VirtualHost: /
+      RabbitMq__DeadLetterExchange: ultrasound.events.dlx
+      RabbitMq__DeadLetterQueue: projection-service.dead
+      RabbitMq__DeadLetterRoutingKey: projection.dead
     depends_on:
       rabbitmq:
         condition: service_healthy

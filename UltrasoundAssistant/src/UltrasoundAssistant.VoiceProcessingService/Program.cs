@@ -1,6 +1,5 @@
 using UltrasoundAssistant.VoiceProcessingService.Application.Abstractions;
 using UltrasoundAssistant.VoiceProcessingService.Application.Validation;
-using UltrasoundAssistant.VoiceProcessingService.Domain.Matching;
 using UltrasoundAssistant.VoiceProcessingService.Domain.Matching.Commands;
 using UltrasoundAssistant.VoiceProcessingService.Domain.Matching.Generation;
 using UltrasoundAssistant.VoiceProcessingService.Domain.Matching.Keywords;

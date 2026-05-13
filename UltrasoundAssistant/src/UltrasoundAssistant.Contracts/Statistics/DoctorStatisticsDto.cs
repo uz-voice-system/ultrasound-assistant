@@ -26,6 +26,21 @@ public sealed class DoctorStatisticsDto
     public int AcceptedAppointmentsCount { get; set; }
 
     /// <summary>
+    /// Количество записей в процессе приёма.
+    /// </summary>
+    public int InProgressAppointmentsCount { get; set; }
+
+    /// <summary>
+    /// Количество завершённых записей.
+    /// </summary>
+    public int CompletedAppointmentsCount { get; set; }
+
+    /// <summary>
+    /// Количество неявок.
+    /// </summary>
+    public int NoShowAppointmentsCount { get; set; }
+
+    /// <summary>
     /// Количество уникальных принятых пациентов.
     /// </summary>
     public int UniqueAcceptedPatientsCount { get; set; }

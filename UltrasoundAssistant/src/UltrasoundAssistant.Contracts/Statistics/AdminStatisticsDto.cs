@@ -21,8 +21,8 @@ public sealed class AdminStatisticsDto
     public int TotalAppointmentsCount { get; set; }
 
     /// <summary>
-    /// Количество принятых пациентов.
-    /// Принятой считается запись, по которой есть отчёт.
+    /// Количество принятых записей.
+    /// Принятой считается запись в статусе InProgress или Completed.
     /// </summary>
     public int AcceptedAppointmentsCount { get; set; }
 
@@ -37,9 +37,30 @@ public sealed class AdminStatisticsDto
     public int ReportsCount { get; set; }
 
     /// <summary>
-    /// Количество записей без отчёта.
+    /// Количество принятых записей без отчёта.
+    /// Например, запись уже InProgress, но отчёт ещё не создан.
     /// </summary>
     public int AppointmentsWithoutReportCount { get; set; }
+
+    /// <summary>
+    /// Количество запланированных записей.
+    /// </summary>
+    public int ScheduledAppointmentsCount { get; set; }
+
+    /// <summary>
+    /// Количество записей в процессе приёма.
+    /// </summary>
+    public int InProgressAppointmentsCount { get; set; }
+
+    /// <summary>
+    /// Количество завершённых записей.
+    /// </summary>
+    public int CompletedAppointmentsCount { get; set; }
+
+    /// <summary>
+    /// Количество неявок.
+    /// </summary>
+    public int NoShowAppointmentsCount { get; set; }
 
     /// <summary>
     /// Статистика по врачам.
@@ -50,6 +71,11 @@ public sealed class AdminStatisticsDto
     /// Статистика по шаблонам исследований.
     /// </summary>
     public List<TemplateStatisticsDto> Templates { get; set; } = [];
+
+    /// <summary>
+    /// Статистика по статусам записей.
+    /// </summary>
+    public List<AppointmentStatusStatisticsDto> AppointmentStatuses { get; set; } = [];
 
     /// <summary>
     /// Статистика по статусам отчётов.

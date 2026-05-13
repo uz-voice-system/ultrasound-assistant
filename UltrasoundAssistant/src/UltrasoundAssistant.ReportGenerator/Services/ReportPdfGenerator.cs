@@ -2,7 +2,9 @@
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
+using System.Globalization;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using UltrasoundAssistant.Contracts.Entity.Templates;
 using UltrasoundAssistant.Contracts.Reads.Reports.Details;
 using UltrasoundAssistant.Contracts.Reads.Templates.Details;
@@ -34,7 +36,7 @@ public sealed class ReportPdfGenerator : IReportPdfGenerator
 
                 page.Header().Element(c => ComposeHeader(c));
                 page.Content().Element(c => ComposeContent(c, report, template, content));
-                page.Footer().Element(ComposeFooter);
+                page.Footer().Element(c => ComposeFooter(c, report));
             });
         }).GeneratePdf();
     }
@@ -100,7 +102,7 @@ public sealed class ReportPdfGenerator : IReportPdfGenerator
                     .BorderBottom(1)
                     .BorderColor(Colors.Grey.Lighten1)
                     .PaddingBottom(8)
-                    .Text(description);
+                    .Text(FormatDisplayText(description));
             }
 
             var conclusion = GetAutoFieldValue(
@@ -116,7 +118,7 @@ public sealed class ReportPdfGenerator : IReportPdfGenerator
                     .BorderBottom(1)
                     .BorderColor(Colors.Grey.Lighten1)
                     .PaddingBottom(8)
-                    .Text(conclusion);
+                    .Text(FormatDisplayText(conclusion));
             }
 
             var recommendation = GetContentValue(content, "recommendation");
@@ -128,7 +130,7 @@ public sealed class ReportPdfGenerator : IReportPdfGenerator
                     .BorderBottom(1)
                     .BorderColor(Colors.Grey.Lighten1)
                     .PaddingBottom(8)
-                    .Text(recommendation);
+                    .Text(FormatDisplayText(recommendation));
             }
 
             column.Item().Element(c => ComposeUltrasoundImage(c, report));
@@ -158,16 +160,14 @@ public sealed class ReportPdfGenerator : IReportPdfGenerator
     }
 
     private static void ComposeStudyInfo(
-        IContainer container,
-        ReportDto report)
+    IContainer container,
+    ReportDto report)
     {
         container.Column(study =>
         {
             study.Spacing(2);
 
             study.Item().Text($"Дата исследования: {FormatDateTime(report.AppointmentStartAtUtc ?? report.CreatedAtUtc)}");
-            study.Item().Text($"Номер отчёта: {report.Id}");
-            study.Item().Text($"Номер записи: {report.AppointmentId}");
         });
     }
 
@@ -219,7 +219,7 @@ public sealed class ReportPdfGenerator : IReportPdfGenerator
                         var value = GetContentValue(content, field.FieldName);
 
                         table.Cell().Element(Cell).Text(field.DisplayName);
-                        table.Cell().Element(Cell).Text(string.IsNullOrWhiteSpace(value) ? "—" : value);
+                        table.Cell().Element(Cell).Text(FormatFieldValue(value));
                         table.Cell().Element(Cell).Text(FormatNorm(field.Norm));
                     }
                 });
@@ -248,7 +248,7 @@ public sealed class ReportPdfGenerator : IReportPdfGenerator
                     foreach (var field in extraFields.OrderBy(x => x.Key))
                     {
                         table.Cell().Element(Cell).Text(field.Key);
-                        table.Cell().Element(Cell).Text(string.IsNullOrWhiteSpace(field.Value) ? "—" : field.Value);
+                        table.Cell().Element(Cell).Text(FormatFieldValue(field.Value));
                     }
                 });
             }
@@ -261,6 +261,7 @@ public sealed class ReportPdfGenerator : IReportPdfGenerator
     {
         var fields = content
             .Where(x => !IsServiceField(x.Key))
+            .Where(x => !IsSystemField(x.Key))
             .OrderBy(x => x.Key)
             .ToList();
 
@@ -287,7 +288,7 @@ public sealed class ReportPdfGenerator : IReportPdfGenerator
             foreach (var field in fields)
             {
                 table.Cell().Element(Cell).Text(field.Key);
-                table.Cell().Element(Cell).Text(string.IsNullOrWhiteSpace(field.Value) ? "—" : field.Value);
+                table.Cell().Element(Cell).Text(FormatFieldValue(field.Value));
             }
         });
     }
@@ -345,7 +346,7 @@ public sealed class ReportPdfGenerator : IReportPdfGenerator
         }
     }
 
-    private void ComposeFooter(IContainer container)
+    private void ComposeFooter(IContainer container, ReportDto report)
     {
         container.Column(column =>
         {
@@ -356,6 +357,13 @@ public sealed class ReportPdfGenerator : IReportPdfGenerator
                 .Text("Данное заключение не является диагнозом и должно быть интерпретировано лечащим врачом в комплексе с клиническими данными, анамнезом и результатами других исследований.")
                 .FontSize(8)
                 .FontColor(Colors.Grey.Darken2)
+                .AlignCenter();
+
+            column.Item()
+                .PaddingTop(3)
+                .Text($"Техническая информация: отчёт {report.Id:N}, запись {report.AppointmentId:N}")
+                .FontSize(6)
+                .FontColor(Colors.Grey.Lighten1)
                 .AlignCenter();
         });
     }
@@ -393,9 +401,13 @@ public sealed class ReportPdfGenerator : IReportPdfGenerator
         return element.ValueKind switch
         {
             JsonValueKind.String => element.GetString() ?? string.Empty,
-            JsonValueKind.Number => element.ToString(),
-            JsonValueKind.True => "true",
-            JsonValueKind.False => "false",
+
+            JsonValueKind.Number => element.TryGetDecimal(out var decimalValue)
+                ? FormatDecimal(decimalValue)
+                : element.ToString(),
+
+            JsonValueKind.True => "Да",
+            JsonValueKind.False => "Нет",
             JsonValueKind.Null => string.Empty,
             JsonValueKind.Undefined => string.Empty,
             _ => element.GetRawText()
@@ -436,8 +448,8 @@ public sealed class ReportPdfGenerator : IReportPdfGenerator
     }
 
     private static List<KeyValuePair<string, string>> GetExtraFields(
-        TemplateDto template,
-        IReadOnlyDictionary<string, string> content)
+    TemplateDto template,
+    IReadOnlyDictionary<string, string> content)
     {
         var templateFieldNames = template.Blocks
             .SelectMany(x => x.Fields)
@@ -447,6 +459,7 @@ public sealed class ReportPdfGenerator : IReportPdfGenerator
         return content
             .Where(x => !templateFieldNames.Contains(x.Key))
             .Where(x => !IsServiceField(x.Key))
+            .Where(x => !IsSystemField(x.Key))
             .ToList();
     }
 
@@ -456,20 +469,20 @@ public sealed class ReportPdfGenerator : IReportPdfGenerator
             return "—";
 
         if (!string.IsNullOrWhiteSpace(norm.NormalText))
-            return norm.NormalText;
+            return FormatDisplayText(norm.NormalText);
 
         var unit = string.IsNullOrWhiteSpace(norm.Unit)
             ? string.Empty
             : $" {norm.Unit.Trim()}";
 
         if (norm.Min is not null && norm.Max is not null)
-            return $"{norm.Min}-{norm.Max}{unit}";
+            return $"{FormatDecimal(norm.Min.Value)}-{FormatDecimal(norm.Max.Value)}{unit}";
 
         if (norm.Min is not null)
-            return $"от {norm.Min}{unit}";
+            return $"от {FormatDecimal(norm.Min.Value)}{unit}";
 
         if (norm.Max is not null)
-            return $"до {norm.Max}{unit}";
+            return $"до {FormatDecimal(norm.Max.Value)}{unit}";
 
         return "—";
     }
@@ -496,6 +509,60 @@ public sealed class ReportPdfGenerator : IReportPdfGenerator
             .Border(1)
             .BorderColor(Colors.Grey.Lighten1)
             .Padding(5);
+    }
+
+    private static readonly Regex DecimalNumberRegex = new(@"(?<![\d.,])-?\d+(?:[.,]\d+)?(?![\d.,])", RegexOptions.Compiled);
+
+    private static string FormatFieldValue(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return "—";
+
+        return FormatDisplayText(value);
+    }
+
+    private static string FormatDisplayText(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return string.Empty;
+
+        return DecimalNumberRegex.Replace(value, match =>
+        {
+            var source = match.Value.Replace(',', '.');
+
+            if (!decimal.TryParse(
+                    source,
+                    NumberStyles.Number,
+                    CultureInfo.InvariantCulture,
+                    out var number))
+            {
+                return match.Value;
+            }
+
+            return FormatDecimal(number);
+        });
+    }
+
+    private static string FormatDecimal(decimal value)
+    {
+        return value.ToString("0.####", CultureInfo.GetCultureInfo("ru-RU"));
+    }
+
+    private static bool IsSystemField(string fieldName)
+    {
+        return fieldName.Equals("id", StringComparison.OrdinalIgnoreCase)
+               || fieldName.Equals("reportId", StringComparison.OrdinalIgnoreCase)
+               || fieldName.Equals("appointmentId", StringComparison.OrdinalIgnoreCase)
+               || fieldName.Equals("patientId", StringComparison.OrdinalIgnoreCase)
+               || fieldName.Equals("doctorId", StringComparison.OrdinalIgnoreCase)
+               || fieldName.Equals("templateId", StringComparison.OrdinalIgnoreCase)
+               || fieldName.Equals("createdAtUtc", StringComparison.OrdinalIgnoreCase)
+               || fieldName.Equals("updatedAtUtc", StringComparison.OrdinalIgnoreCase)
+               || fieldName.Equals("version", StringComparison.OrdinalIgnoreCase)
+               || fieldName.Equals("ultrasoundImageBase64", StringComparison.OrdinalIgnoreCase)
+               || fieldName.Equals("ultrasoundImageFileName", StringComparison.OrdinalIgnoreCase)
+               || fieldName.Equals("ultrasoundImageContentType", StringComparison.OrdinalIgnoreCase)
+               || fieldName.Equals("ultrasoundImageUploadedAtUtc", StringComparison.OrdinalIgnoreCase);
     }
 
     private static string FormatDate(DateTime? date)

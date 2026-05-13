@@ -146,7 +146,8 @@ public sealed class MedicalValueNormalizer : IValueNormalizer
 
     private NormalizedValueResult NormalizeText(string rawValue, TemplateFieldDto field)
     {
-        var normalizedValue = _textNormalizer.NormalizeText(rawValue);
+        var displayValue = rawValue.Trim();
+        var normalizedValue = _textNormalizer.NormalizeText(displayValue);
 
         if (string.IsNullOrWhiteSpace(normalizedValue))
             return NormalizedValueResult.Failed();
@@ -155,25 +156,25 @@ public sealed class MedicalValueNormalizer : IValueNormalizer
         {
             return new NormalizedValueResult
             {
-                Value = rawValue.Trim(),
+                Value = displayValue,
                 NumericValue = null,
                 Unit = null,
-                Confidence = 0.75,
+                Confidence = 0.9,
                 NormStatus = NormStatus.Unknown
             };
         }
 
         var normalizedNorm = _textNormalizer.NormalizeText(field.Norm.NormalText);
-        var confidence = _similarityService.Calculate(normalizedValue, normalizedNorm);
+        var normSimilarity = _similarityService.Calculate(normalizedValue, normalizedNorm);
 
-        if (confidence >= MinimumTextNormConfidence)
+        if (normSimilarity >= MinimumTextNormConfidence)
         {
             return new NormalizedValueResult
             {
-                Value = field.Norm.NormalText,
+                Value = field.Norm.NormalText.Trim(),
                 NumericValue = null,
                 Unit = null,
-                Confidence = Math.Round(confidence, 2),
+                Confidence = 1,
                 NormStatus = NormStatus.Normal,
                 NormMessage = "Текстовое значение соответствует норме"
             };
@@ -181,10 +182,10 @@ public sealed class MedicalValueNormalizer : IValueNormalizer
 
         return new NormalizedValueResult
         {
-            Value = rawValue.Trim(),
+            Value = displayValue,
             NumericValue = null,
             Unit = null,
-            Confidence = Math.Round(Math.Max(0.45, confidence), 2),
+            Confidence = 1,
             NormStatus = NormStatus.AbnormalText,
             NormMessage = "Текстовое значение отличается от нормы"
         };

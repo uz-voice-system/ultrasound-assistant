@@ -74,19 +74,48 @@ public sealed class RabbitMqProjectionConsumer : BackgroundService
         _channel = await _connection.CreateChannelAsync(cancellationToken: stoppingToken);
 
         await _channel.ExchangeDeclareAsync(
-            exchange: _options.Exchange,
-            type: ExchangeType.Topic,
+    exchange: _options.Exchange,
+    type: ExchangeType.Topic,
+    durable: true,
+    autoDelete: false,
+    arguments: null,
+    cancellationToken: stoppingToken);
+
+        await _channel.ExchangeDeclareAsync(
+            exchange: _options.DeadLetterExchange,
+            type: ExchangeType.Direct,
             durable: true,
             autoDelete: false,
             arguments: null,
             cancellationToken: stoppingToken);
 
         await _channel.QueueDeclareAsync(
-            queue: _options.Queue,
+            queue: _options.DeadLetterQueue,
             durable: true,
             exclusive: false,
             autoDelete: false,
             arguments: null,
+            cancellationToken: stoppingToken);
+
+        await _channel.QueueBindAsync(
+            queue: _options.DeadLetterQueue,
+            exchange: _options.DeadLetterExchange,
+            routingKey: _options.DeadLetterRoutingKey,
+            arguments: null,
+            cancellationToken: stoppingToken);
+
+        var queueArguments = new Dictionary<string, object?>
+        {
+            ["x-dead-letter-exchange"] = _options.DeadLetterExchange,
+            ["x-dead-letter-routing-key"] = _options.DeadLetterRoutingKey
+        };
+
+        await _channel.QueueDeclareAsync(
+            queue: _options.Queue,
+            durable: true,
+            exclusive: false,
+            autoDelete: false,
+            arguments: queueArguments,
             cancellationToken: stoppingToken);
 
         await _channel.BasicQosAsync(
@@ -164,14 +193,18 @@ public sealed class RabbitMqProjectionConsumer : BackgroundService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to process message with routing key {RoutingKey}", routingKey);
+                _logger.LogError(
+                    ex,
+                    "Failed to process message. Message will be rejected without requeue. RoutingKey={RoutingKey}, Payload={Payload}",
+                    routingKey,
+                    payload);
 
                 if (_channel is not null)
                 {
                     await _channel.BasicNackAsync(
                         ea.DeliveryTag,
                         multiple: false,
-                        requeue: true,
+                        requeue: false,
                         cancellationToken: stoppingToken);
                 }
             }

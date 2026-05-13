@@ -9,7 +9,7 @@ using UltrasoundAssistant.VoiceProcessingService.Domain.Matching.Models;
 using UltrasoundAssistant.VoiceProcessingService.Domain.Matching.Text;
 using UltrasoundAssistant.VoiceProcessingService.Domain.Matching.Values;
 
-namespace UltrasoundAssistant.VoiceProcessingService.Domain.Matching;
+namespace UltrasoundAssistant.VoiceProcessingService.Services.Templates;
 
 /// <summary>
 /// Сервис сопоставления распознанного текста с шаблоном отчёта
@@ -137,14 +137,22 @@ public sealed class TemplateMatchingService : ITemplateMatchingService
     }
 
     private VoiceProcessResult BuildResult(
-        IReadOnlyList<TextToken> tokens,
-        TemplateDto template,
-        IReadOnlyList<KeywordOccurrence> occurrences)
+    IReadOnlyList<TextToken> tokens,
+    TemplateDto template,
+    IReadOnlyList<KeywordOccurrence> occurrences)
     {
         var result = new VoiceProcessResult
         {
             Matched = true
         };
+
+        var matchedRanges = occurrences
+            .Select(x => new MatchedTextRange
+            {
+                StartWordIndex = x.WordIndex,
+                EndWordIndex = x.EndWordIndex
+            })
+            .ToList();
 
         for (var i = 0; i < occurrences.Count; i++)
         {
@@ -152,38 +160,57 @@ public sealed class TemplateMatchingService : ITemplateMatchingService
 
             if (occurrence.Kind == KeywordMatchKind.Field)
             {
-                AddFieldResult(tokens, template, occurrences, i, occurrence, result);
+                var valueRange = AddFieldResult(
+                    tokens,
+                    template,
+                    occurrences,
+                    i,
+                    occurrence,
+                    result);
+
+                if (valueRange is not null)
+                    matchedRanges.Add(valueRange);
+
                 continue;
             }
 
             if (occurrence.Kind == KeywordMatchKind.Block)
             {
-                AddDefaultFieldResult(tokens, template, occurrences, i, occurrence, result);
+                var valueRange = AddDefaultFieldResult(
+                    tokens,
+                    template,
+                    occurrences,
+                    i,
+                    occurrence,
+                    result);
+
+                if (valueRange is not null)
+                    matchedRanges.Add(valueRange);
             }
         }
 
-        result.UnmatchedParts = BuildUnmatchedParts(tokens, occurrences);
+        result.UnmatchedParts = BuildUnmatchedParts(tokens, matchedRanges);
 
         return result;
     }
 
-    private void AddFieldResult(
-        IReadOnlyList<TextToken> tokens,
-        TemplateDto template,
-        IReadOnlyList<KeywordOccurrence> occurrences,
-        int occurrenceIndex,
-        KeywordOccurrence occurrence,
-        VoiceProcessResult result)
+    private MatchedTextRange? AddFieldResult(
+    IReadOnlyList<TextToken> tokens,
+    TemplateDto template,
+    IReadOnlyList<KeywordOccurrence> occurrences,
+    int occurrenceIndex,
+    KeywordOccurrence occurrence,
+    VoiceProcessResult result)
     {
         var block = FindBlock(template, occurrence.BlockId);
 
         if (block is null)
-            return;
+            return null;
 
         var field = block.Fields.FirstOrDefault(x => x.FieldName == occurrence.FieldName);
 
         if (field is null)
-            return;
+            return null;
 
         var valueStart = occurrence.EndWordIndex;
         var valueEnd = FindValueEnd(tokens.Count, occurrences, occurrenceIndex);
@@ -193,34 +220,45 @@ public sealed class TemplateMatchingService : ITemplateMatchingService
         var normalizedValue = _valueNormalizer.Normalize(rawValue, field);
 
         if (string.IsNullOrWhiteSpace(normalizedValue.Value))
-            return;
+            return null;
 
-        result.Fields.Add(new MatchedFieldResult
+        AddOrReplaceFieldResult(
+            result,
+            new MatchedFieldResult
+            {
+                BlockName = block.Name,
+                FieldName = field.FieldName,
+                Keyword = occurrence.Keyword,
+                RecognizedKeyword = occurrence.RecognizedKeyword,
+                RawValue = rawValue,
+                Value = normalizedValue.Value,
+                Confidence = Math.Round(occurrence.Confidence * normalizedValue.Confidence, 2),
+                NormStatus = normalizedValue.NormStatus,
+                NormMessage = normalizedValue.NormMessage
+            });
+
+        return new MatchedTextRange
         {
-            BlockName = block.Name,
-            FieldName = field.FieldName,
-            Keyword = occurrence.Keyword,
-            RecognizedKeyword = occurrence.RecognizedKeyword,
-            RawValue = rawValue,
-            Value = normalizedValue.Value,
-            Confidence = Math.Round(occurrence.Confidence * normalizedValue.Confidence, 2),
-            NormStatus = normalizedValue.NormStatus,
-            NormMessage = normalizedValue.NormMessage
-        });
+            StartWordIndex = valueStart,
+            EndWordIndex = CalculateExtractedValueEnd(
+                valueStart,
+                valueEnd,
+                rawValue)
+        };
     }
 
-    private void AddDefaultFieldResult(
-        IReadOnlyList<TextToken> tokens,
-        TemplateDto template,
-        IReadOnlyList<KeywordOccurrence> occurrences,
-        int occurrenceIndex,
-        KeywordOccurrence occurrence,
-        VoiceProcessResult result)
+    private MatchedTextRange? AddDefaultFieldResult(
+    IReadOnlyList<TextToken> tokens,
+    TemplateDto template,
+    IReadOnlyList<KeywordOccurrence> occurrences,
+    int occurrenceIndex,
+    KeywordOccurrence occurrence,
+    VoiceProcessResult result)
     {
         var block = FindBlock(template, occurrence.BlockId);
 
         if (block is null || string.IsNullOrWhiteSpace(block.DefaultFieldName))
-            return;
+            return null;
 
         var nextIndex = occurrenceIndex + 1;
 
@@ -228,13 +266,13 @@ public sealed class TemplateMatchingService : ITemplateMatchingService
             occurrences[nextIndex].Kind == KeywordMatchKind.Field &&
             occurrences[nextIndex].BlockId == block.Id)
         {
-            return;
+            return null;
         }
 
         var field = block.Fields.FirstOrDefault(x => x.FieldName == block.DefaultFieldName);
 
         if (field is null)
-            return;
+            return null;
 
         var valueStart = occurrence.EndWordIndex;
         var valueEnd = FindValueEnd(tokens.Count, occurrences, occurrenceIndex);
@@ -244,20 +282,49 @@ public sealed class TemplateMatchingService : ITemplateMatchingService
         var normalizedValue = _valueNormalizer.Normalize(rawValue, field);
 
         if (string.IsNullOrWhiteSpace(normalizedValue.Value))
-            return;
+            return null;
 
-        result.Fields.Add(new MatchedFieldResult
+        AddOrReplaceFieldResult(
+            result,
+            new MatchedFieldResult
+            {
+                BlockName = block.Name,
+                FieldName = field.FieldName,
+                Keyword = occurrence.Keyword,
+                RecognizedKeyword = occurrence.RecognizedKeyword,
+                RawValue = rawValue,
+                Value = normalizedValue.Value,
+                Confidence = Math.Round(occurrence.Confidence * normalizedValue.Confidence, 2),
+                NormStatus = normalizedValue.NormStatus,
+                NormMessage = normalizedValue.NormMessage
+            });
+
+        return new MatchedTextRange
         {
-            BlockName = block.Name,
-            FieldName = field.FieldName,
-            Keyword = occurrence.Keyword,
-            RecognizedKeyword = occurrence.RecognizedKeyword,
-            RawValue = rawValue,
-            Value = normalizedValue.Value,
-            Confidence = Math.Round(occurrence.Confidence * normalizedValue.Confidence, 2),
-            NormStatus = normalizedValue.NormStatus,
-            NormMessage = normalizedValue.NormMessage
-        });
+            StartWordIndex = valueStart,
+            EndWordIndex = CalculateExtractedValueEnd(
+                valueStart,
+                valueEnd,
+                rawValue)
+        };
+    }
+
+    private int CalculateExtractedValueEnd(
+    int valueStart,
+    int valueEnd,
+    string rawValue)
+    {
+        if (string.IsNullOrWhiteSpace(rawValue))
+            return valueStart;
+
+        var valueTokens = _textNormalizer.Tokenize(rawValue);
+
+        if (valueTokens.Count == 0)
+            return valueStart;
+
+        var calculatedEnd = valueStart + valueTokens.Count;
+
+        return Math.Min(calculatedEnd, valueEnd);
     }
 
     private static int FindValueEnd(
@@ -303,48 +370,138 @@ public sealed class TemplateMatchingService : ITemplateMatchingService
     }
 
     private static List<string> BuildUnmatchedParts(
-        IReadOnlyList<TextToken> tokens,
-        IReadOnlyList<KeywordOccurrence> occurrences)
+    IReadOnlyList<TextToken> tokens,
+    IReadOnlyList<MatchedTextRange> matchedRanges)
     {
         var unmatched = new List<string>();
 
-        if (occurrences.Count == 0)
+        if (tokens.Count == 0)
+            return unmatched;
+
+        if (matchedRanges.Count == 0)
         {
             unmatched.Add(string.Join(' ', tokens.Select(x => x.Original)));
             return unmatched;
         }
 
-        if (occurrences[0].WordIndex > 0)
-        {
-            var prefix = string.Join(' ',
-                tokens
-                    .Take(occurrences[0].WordIndex)
-                    .Select(x => x.Original));
+        var mergedRanges = MergeRanges(matchedRanges);
 
-            if (!string.IsNullOrWhiteSpace(prefix))
-                unmatched.Add(prefix);
+        var currentIndex = 0;
+
+        foreach (var range in mergedRanges)
+        {
+            if (currentIndex < range.StartWordIndex)
+            {
+                AddUnmatchedSegment(
+                    tokens,
+                    currentIndex,
+                    range.StartWordIndex,
+                    unmatched);
+            }
+
+            currentIndex = Math.Max(currentIndex, range.EndWordIndex);
         }
 
-        for (var i = 0; i < occurrences.Count; i++)
+        if (currentIndex < tokens.Count)
         {
-            var start = occurrences[i].EndWordIndex;
-            var end = i + 1 < occurrences.Count
-                ? occurrences[i + 1].WordIndex
-                : tokens.Count;
+            AddUnmatchedSegment(
+                tokens,
+                currentIndex,
+                tokens.Count,
+                unmatched);
+        }
 
-            if (start >= end)
+        return unmatched
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private static List<MatchedTextRange> MergeRanges(
+    IReadOnlyList<MatchedTextRange> ranges)
+    {
+        var ordered = ranges
+            .Where(x => x.StartWordIndex < x.EndWordIndex)
+            .OrderBy(x => x.StartWordIndex)
+            .ThenBy(x => x.EndWordIndex)
+            .ToList();
+
+        if (ordered.Count == 0)
+            return [];
+
+        var result = new List<MatchedTextRange>();
+
+        var current = new MatchedTextRange
+        {
+            StartWordIndex = ordered[0].StartWordIndex,
+            EndWordIndex = ordered[0].EndWordIndex
+        };
+
+        foreach (var range in ordered.Skip(1))
+        {
+            if (range.StartWordIndex <= current.EndWordIndex)
+            {
+                current.EndWordIndex = Math.Max(
+                    current.EndWordIndex,
+                    range.EndWordIndex);
+
                 continue;
+            }
 
-            var segment = string.Join(' ',
-                tokens
-                    .Skip(start)
-                    .Take(end - start)
-                    .Select(x => x.Original));
+            result.Add(current);
 
-            if (!string.IsNullOrWhiteSpace(segment))
-                unmatched.Add(segment);
+            current = new MatchedTextRange
+            {
+                StartWordIndex = range.StartWordIndex,
+                EndWordIndex = range.EndWordIndex
+            };
         }
 
-        return unmatched.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        result.Add(current);
+
+        return result;
+    }
+
+    private static void AddUnmatchedSegment(
+    IReadOnlyList<TextToken> tokens,
+    int start,
+    int end,
+    List<string> unmatched)
+    {
+        if (start >= end)
+            return;
+
+        var segment = string.Join(' ',
+            tokens
+                .Skip(start)
+                .Take(end - start)
+                .Select(x => x.Original));
+
+        if (!string.IsNullOrWhiteSpace(segment))
+            unmatched.Add(segment);
+    }
+
+    private static void AddOrReplaceFieldResult(
+    VoiceProcessResult result,
+    MatchedFieldResult field)
+    {
+        var existingIndex = result.Fields.FindIndex(x =>
+            string.Equals(x.BlockName, field.BlockName, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(x.FieldName, field.FieldName, StringComparison.OrdinalIgnoreCase));
+
+        if (existingIndex >= 0)
+        {
+            result.Fields[existingIndex] = field;
+            return;
+        }
+
+        result.Fields.Add(field);
+    }
+
+    private sealed class MatchedTextRange
+    {
+        public int StartWordIndex { get; set; }
+
+        public int EndWordIndex { get; set; }
     }
 }

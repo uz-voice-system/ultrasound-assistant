@@ -1,4 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using UltrasoundAssistant.Contracts.Common;
+using UltrasoundAssistant.Contracts.Enums;
 using UltrasoundAssistant.Contracts.Statistics;
 using UltrasoundAssistant.ProjectionService.Infrastructure.Abstractions;
 
@@ -13,7 +15,9 @@ public sealed class AdminStatisticsReadRepository : IAdminStatisticsReadReposito
         _dbContext = dbContext;
     }
 
-    public async Task<AdminStatisticsDto> GetAsync(AdminStatisticsRequest request, CancellationToken cancellationToken)
+    public async Task<AdminStatisticsDto> GetAsync(
+        AdminStatisticsRequest request,
+        CancellationToken cancellationToken)
     {
         var appointmentsQuery = _dbContext.Appointments
             .AsNoTracking()
@@ -34,7 +38,8 @@ public sealed class AdminStatisticsReadRepository : IAdminStatisticsReadReposito
                 Id = x.Id,
                 PatientId = x.PatientId,
                 DoctorId = x.DoctorId,
-                TemplateId = x.TemplateId
+                TemplateId = x.TemplateId,
+                Status = x.Status
             })
             .ToListAsync(cancellationToken);
 
@@ -49,7 +54,7 @@ public sealed class AdminStatisticsReadRepository : IAdminStatisticsReadReposito
             {
                 Id = x.Id,
                 AppointmentId = x.AppointmentId,
-                Status = x.Status.ToString()
+                Status = x.Status
             })
             .ToListAsync(cancellationToken);
 
@@ -94,7 +99,11 @@ public sealed class AdminStatisticsReadRepository : IAdminStatisticsReadReposito
             .ToHashSet();
 
         var acceptedAppointments = appointments
-            .Where(x => reportAppointmentIds.Contains(x.Id))
+            .Where(x => IsAcceptedStatus(x.Status))
+            .ToList();
+
+        var appointmentsWithoutReport = acceptedAppointments
+            .Where(x => !reportAppointmentIds.Contains(x.Id))
             .ToList();
 
         return new AdminStatisticsDto
@@ -104,12 +113,19 @@ public sealed class AdminStatisticsReadRepository : IAdminStatisticsReadReposito
 
             TotalAppointmentsCount = appointments.Count,
             AcceptedAppointmentsCount = acceptedAppointments.Count,
+
             UniqueAcceptedPatientsCount = acceptedAppointments
                 .Select(x => x.PatientId)
                 .Distinct()
                 .Count(),
+
             ReportsCount = reports.Count,
-            AppointmentsWithoutReportCount = appointments.Count - acceptedAppointments.Count,
+            AppointmentsWithoutReportCount = appointmentsWithoutReport.Count,
+
+            ScheduledAppointmentsCount = appointments.Count(x => x.Status == AppointmentStatus.Scheduled),
+            InProgressAppointmentsCount = appointments.Count(x => x.Status == AppointmentStatus.InProgress),
+            CompletedAppointmentsCount = appointments.Count(x => x.Status == AppointmentStatus.Completed),
+            NoShowAppointmentsCount = appointments.Count(x => x.Status == AppointmentStatus.NoShow),
 
             Doctors = BuildDoctorStatistics(
                 appointments,
@@ -121,15 +137,28 @@ public sealed class AdminStatisticsReadRepository : IAdminStatisticsReadReposito
                 reports,
                 templates),
 
+            AppointmentStatuses = appointments
+                .GroupBy(x => x.Status)
+                .Select(x => new AppointmentStatusStatisticsDto
+                {
+                    Status = x.Key.ToString(),
+                    StatusDisplayName = x.Key.GetDisplayName(),
+                    Count = x.Count()
+                })
+                .OrderByDescending(x => x.Count)
+                .ThenBy(x => x.StatusDisplayName)
+                .ToList(),
+
             ReportStatuses = reports
                 .GroupBy(x => x.Status)
                 .Select(x => new ReportStatusStatisticsDto
                 {
-                    Status = x.Key,
+                    Status = x.Key.ToString(),
+                    StatusDisplayName = x.Key.GetDisplayName(),
                     Count = x.Count()
                 })
                 .OrderByDescending(x => x.Count)
-                .ThenBy(x => x.Status)
+                .ThenBy(x => x.StatusDisplayName)
                 .ToList()
         };
     }
@@ -150,18 +179,29 @@ public sealed class AdminStatisticsReadRepository : IAdminStatisticsReadReposito
                 var groupAppointments = group.ToList();
 
                 var acceptedAppointments = groupAppointments
-                    .Where(x => reportsByAppointmentId.ContainsKey(x.Id))
+                    .Where(x => IsAcceptedStatus(x.Status))
                     .ToList();
 
                 return new DoctorStatisticsDto
                 {
                     DoctorId = group.Key,
+
                     DoctorFullName = doctors.TryGetValue(group.Key, out var fullName)
                         ? fullName
                         : "Неизвестный врач",
 
                     AppointmentsCount = groupAppointments.Count,
                     AcceptedAppointmentsCount = acceptedAppointments.Count,
+
+                    InProgressAppointmentsCount = groupAppointments.Count(x =>
+                        x.Status == AppointmentStatus.InProgress),
+
+                    CompletedAppointmentsCount = groupAppointments.Count(x =>
+                        x.Status == AppointmentStatus.Completed),
+
+                    NoShowAppointmentsCount = groupAppointments.Count(x =>
+                        x.Status == AppointmentStatus.NoShow),
+
                     UniqueAcceptedPatientsCount = acceptedAppointments
                         .Select(x => x.PatientId)
                         .Distinct()
@@ -194,18 +234,29 @@ public sealed class AdminStatisticsReadRepository : IAdminStatisticsReadReposito
                 var groupAppointments = group.ToList();
 
                 var acceptedAppointments = groupAppointments
-                    .Where(x => reportsByAppointmentId.ContainsKey(x.Id))
+                    .Where(x => IsAcceptedStatus(x.Status))
                     .ToList();
 
                 return new TemplateStatisticsDto
                 {
                     TemplateId = group.Key,
+
                     TemplateName = templates.TryGetValue(group.Key, out var name)
                         ? name
                         : "Неизвестный шаблон",
 
                     AppointmentsCount = groupAppointments.Count,
                     AcceptedAppointmentsCount = acceptedAppointments.Count,
+
+                    InProgressAppointmentsCount = groupAppointments.Count(x =>
+                        x.Status == AppointmentStatus.InProgress),
+
+                    CompletedAppointmentsCount = groupAppointments.Count(x =>
+                        x.Status == AppointmentStatus.Completed),
+
+                    NoShowAppointmentsCount = groupAppointments.Count(x =>
+                        x.Status == AppointmentStatus.NoShow),
+
                     UniqueAcceptedPatientsCount = acceptedAppointments
                         .Select(x => x.PatientId)
                         .Distinct()
@@ -222,6 +273,11 @@ public sealed class AdminStatisticsReadRepository : IAdminStatisticsReadReposito
             .ToList();
     }
 
+    private static bool IsAcceptedStatus(AppointmentStatus status)
+    {
+        return status is AppointmentStatus.InProgress or AppointmentStatus.Completed;
+    }
+
     private sealed class AppointmentStatisticsItem
     {
         public Guid Id { get; set; }
@@ -231,6 +287,8 @@ public sealed class AdminStatisticsReadRepository : IAdminStatisticsReadReposito
         public Guid DoctorId { get; set; }
 
         public Guid TemplateId { get; set; }
+
+        public AppointmentStatus Status { get; set; }
     }
 
     private sealed class ReportStatisticsItem
@@ -239,6 +297,6 @@ public sealed class AdminStatisticsReadRepository : IAdminStatisticsReadReposito
 
         public Guid AppointmentId { get; set; }
 
-        public string Status { get; set; } = string.Empty;
+        public ReportStatus Status { get; set; }
     }
 }

@@ -1,22 +1,22 @@
 ﻿namespace UltrasoundAssistant.Contracts.Statistics;
 
 /// <summary>
-/// Статистика по статусу отчёта.
+/// Статистика по статусу записи на приём.
 /// </summary>
-public sealed class ReportStatusStatisticsDto
+public sealed class AppointmentStatusStatisticsDto
 {
     /// <summary>
-    /// Техническое значение статуса отчёта.
+    /// Техническое значение статуса.
     /// </summary>
     public string Status { get; set; } = string.Empty;
 
     /// <summary>
-    /// Отображаемое название статуса отчёта.
+    /// Отображаемое название статуса.
     /// </summary>
     public string StatusDisplayName { get; set; } = string.Empty;
 
     /// <summary>
-    /// Количество отчётов.
+    /// Количество записей.
     /// </summary>
     public int Count { get; set; }
 }

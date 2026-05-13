@@ -5,7 +5,6 @@ using QuestPDF.Infrastructure;
 using UltrasoundAssistant.Contracts.Statistics;
 using UltrasoundAssistant.ReportGenerator.Abstractions;
 using UltrasoundAssistant.ReportGenerator.Options;
-using UltrasoundAssistant.ReportGenerator.Services.Localization;
 
 namespace UltrasoundAssistant.ReportGenerator.Services;
 
@@ -26,7 +25,7 @@ public sealed class AdminStatisticsPdfGenerator : IAdminStatisticsPdfGenerator
             {
                 page.Size(PageSizes.A4);
                 page.Margin(35);
-                page.DefaultTextStyle(x => x.FontSize(10).FontFamily("Arial"));
+                page.DefaultTextStyle(x => x.FontSize(9).FontFamily("Arial"));
 
                 page.Header().Element(ComposeHeader);
                 page.Content().Element(c => ComposeContent(c, statistics));
@@ -76,6 +75,14 @@ public sealed class AdminStatisticsPdfGenerator : IAdminStatisticsPdfGenerator
 
             column.Item()
                 .PaddingTop(5)
+                .Text("Статистика по статусам записей")
+                .Bold()
+                .FontSize(13);
+
+            column.Item().Element(c => ComposeAppointmentStatusesTable(c, statistics.AppointmentStatuses));
+
+            column.Item()
+                .PaddingTop(5)
                 .Text("Статистика по врачам")
                 .Bold()
                 .FontSize(13);
@@ -101,8 +108,8 @@ public sealed class AdminStatisticsPdfGenerator : IAdminStatisticsPdfGenerator
     }
 
     private static void ComposeSummaryCards(
-    IContainer container,
-    AdminStatisticsDto statistics)
+        IContainer container,
+        AdminStatisticsDto statistics)
     {
         container.Column(column =>
         {
@@ -119,13 +126,18 @@ public sealed class AdminStatisticsPdfGenerator : IAdminStatisticsPdfGenerator
 
                 row.RelativeItem().Element(c => ComposeMetricCard(
                     c,
-                    "Принято пациентов",
+                    "Принято",
                     statistics.AcceptedAppointmentsCount.ToString()));
 
                 row.RelativeItem().Element(c => ComposeMetricCard(
                     c,
                     "Уникальных пациентов",
                     statistics.UniqueAcceptedPatientsCount.ToString()));
+
+                row.RelativeItem().Element(c => ComposeMetricCard(
+                    c,
+                    "Отчётов",
+                    statistics.ReportsCount.ToString()));
             });
 
             column.Item().Row(row =>
@@ -134,13 +146,28 @@ public sealed class AdminStatisticsPdfGenerator : IAdminStatisticsPdfGenerator
 
                 row.RelativeItem().Element(c => ComposeMetricCard(
                     c,
-                    "Отчётов создано",
-                    statistics.ReportsCount.ToString()));
+                    "Запланировано",
+                    statistics.ScheduledAppointmentsCount.ToString()));
 
                 row.RelativeItem().Element(c => ComposeMetricCard(
                     c,
-                    "Записей без отчёта",
-                    statistics.AppointmentsWithoutReportCount.ToString()));
+                    "В процессе",
+                    statistics.InProgressAppointmentsCount.ToString()));
+
+                row.RelativeItem().Element(c => ComposeMetricCard(
+                    c,
+                    "Завершено",
+                    statistics.CompletedAppointmentsCount.ToString()));
+
+                row.RelativeItem().Element(c => ComposeMetricCard(
+                    c,
+                    "Не явились",
+                    statistics.NoShowAppointmentsCount.ToString()));
+            });
+
+            column.Item().Row(row =>
+            {
+                row.Spacing(8);
 
                 row.RelativeItem().Element(c => ComposeMetricCard(
                     c,
@@ -148,6 +175,25 @@ public sealed class AdminStatisticsPdfGenerator : IAdminStatisticsPdfGenerator
                     FormatPercent(
                         statistics.AcceptedAppointmentsCount,
                         statistics.TotalAppointmentsCount)));
+
+                row.RelativeItem().Element(c => ComposeMetricCard(
+                    c,
+                    "Процент завершения",
+                    FormatPercent(
+                        statistics.CompletedAppointmentsCount,
+                        statistics.TotalAppointmentsCount)));
+
+                row.RelativeItem().Element(c => ComposeMetricCard(
+                    c,
+                    "Процент неявок",
+                    FormatPercent(
+                        statistics.NoShowAppointmentsCount,
+                        statistics.TotalAppointmentsCount)));
+
+                row.RelativeItem().Element(c => ComposeMetricCard(
+                    c,
+                    "Принято без отчёта",
+                    statistics.AppointmentsWithoutReportCount.ToString()));
             });
         });
     }
@@ -164,9 +210,41 @@ public sealed class AdminStatisticsPdfGenerator : IAdminStatisticsPdfGenerator
             .Padding(8)
             .Column(column =>
             {
-                column.Item().Text(title).FontSize(9).FontColor(Colors.Grey.Darken2);
-                column.Item().Text(value).Bold().FontSize(15);
+                column.Item().Text(title).FontSize(8).FontColor(Colors.Grey.Darken2);
+                column.Item().Text(value).Bold().FontSize(14);
             });
+    }
+
+    private static void ComposeAppointmentStatusesTable(
+        IContainer container,
+        IReadOnlyList<AppointmentStatusStatisticsDto> statuses)
+    {
+        if (statuses.Count == 0)
+        {
+            container.Text("Нет данных по статусам записей.");
+            return;
+        }
+
+        container.Table(table =>
+        {
+            table.ColumnsDefinition(columns =>
+            {
+                columns.RelativeColumn(2);
+                columns.RelativeColumn(1);
+            });
+
+            table.Header(header =>
+            {
+                header.Cell().Element(HeaderCell).Text("Статус записи");
+                header.Cell().Element(HeaderCell).Text("Количество");
+            });
+
+            foreach (var item in statuses)
+            {
+                table.Cell().Element(Cell).Text(GetAppointmentStatusName(item));
+                table.Cell().Element(Cell).Text(item.Count.ToString());
+            }
+        });
     }
 
     private static void ComposeDoctorsTable(
@@ -188,13 +266,19 @@ public sealed class AdminStatisticsPdfGenerator : IAdminStatisticsPdfGenerator
                 columns.RelativeColumn(1);
                 columns.RelativeColumn(1);
                 columns.RelativeColumn(1);
+                columns.RelativeColumn(1);
+                columns.RelativeColumn(1);
+                columns.RelativeColumn(1);
             });
 
             table.Header(header =>
             {
                 header.Cell().Element(HeaderCell).Text("Врач");
-                header.Cell().Element(HeaderCell).Text("Записей");
+                header.Cell().Element(HeaderCell).Text("Всего");
                 header.Cell().Element(HeaderCell).Text("Принято");
+                header.Cell().Element(HeaderCell).Text("В процессе");
+                header.Cell().Element(HeaderCell).Text("Завершено");
+                header.Cell().Element(HeaderCell).Text("Неявки");
                 header.Cell().Element(HeaderCell).Text("Пациентов");
                 header.Cell().Element(HeaderCell).Text("Отчётов");
             });
@@ -204,6 +288,9 @@ public sealed class AdminStatisticsPdfGenerator : IAdminStatisticsPdfGenerator
                 table.Cell().Element(Cell).Text(item.DoctorFullName);
                 table.Cell().Element(Cell).Text(item.AppointmentsCount.ToString());
                 table.Cell().Element(Cell).Text(item.AcceptedAppointmentsCount.ToString());
+                table.Cell().Element(Cell).Text(item.InProgressAppointmentsCount.ToString());
+                table.Cell().Element(Cell).Text(item.CompletedAppointmentsCount.ToString());
+                table.Cell().Element(Cell).Text(item.NoShowAppointmentsCount.ToString());
                 table.Cell().Element(Cell).Text(item.UniqueAcceptedPatientsCount.ToString());
                 table.Cell().Element(Cell).Text(item.ReportsCount.ToString());
             }
@@ -229,13 +316,19 @@ public sealed class AdminStatisticsPdfGenerator : IAdminStatisticsPdfGenerator
                 columns.RelativeColumn(1);
                 columns.RelativeColumn(1);
                 columns.RelativeColumn(1);
+                columns.RelativeColumn(1);
+                columns.RelativeColumn(1);
+                columns.RelativeColumn(1);
             });
 
             table.Header(header =>
             {
                 header.Cell().Element(HeaderCell).Text("Исследование");
-                header.Cell().Element(HeaderCell).Text("Записей");
+                header.Cell().Element(HeaderCell).Text("Всего");
                 header.Cell().Element(HeaderCell).Text("Принято");
+                header.Cell().Element(HeaderCell).Text("В процессе");
+                header.Cell().Element(HeaderCell).Text("Завершено");
+                header.Cell().Element(HeaderCell).Text("Неявки");
                 header.Cell().Element(HeaderCell).Text("Пациентов");
                 header.Cell().Element(HeaderCell).Text("Отчётов");
             });
@@ -245,6 +338,9 @@ public sealed class AdminStatisticsPdfGenerator : IAdminStatisticsPdfGenerator
                 table.Cell().Element(Cell).Text(item.TemplateName);
                 table.Cell().Element(Cell).Text(item.AppointmentsCount.ToString());
                 table.Cell().Element(Cell).Text(item.AcceptedAppointmentsCount.ToString());
+                table.Cell().Element(Cell).Text(item.InProgressAppointmentsCount.ToString());
+                table.Cell().Element(Cell).Text(item.CompletedAppointmentsCount.ToString());
+                table.Cell().Element(Cell).Text(item.NoShowAppointmentsCount.ToString());
                 table.Cell().Element(Cell).Text(item.UniqueAcceptedPatientsCount.ToString());
                 table.Cell().Element(Cell).Text(item.ReportsCount.ToString());
             }
@@ -271,13 +367,13 @@ public sealed class AdminStatisticsPdfGenerator : IAdminStatisticsPdfGenerator
 
             table.Header(header =>
             {
-                header.Cell().Element(HeaderCell).Text("Статус");
+                header.Cell().Element(HeaderCell).Text("Статус отчёта");
                 header.Cell().Element(HeaderCell).Text("Количество");
             });
 
             foreach (var item in statuses)
             {
-                table.Cell().Element(Cell).Text(ReportDisplayLocalizer.LocalizeReportStatus(item.Status));
+                table.Cell().Element(Cell).Text(GetReportStatusName(item));
                 table.Cell().Element(Cell).Text(item.Count.ToString());
             }
         });
@@ -304,7 +400,7 @@ public sealed class AdminStatisticsPdfGenerator : IAdminStatisticsPdfGenerator
             .Border(1)
             .BorderColor(Colors.Grey.Medium)
             .Background(Colors.Grey.Lighten3)
-            .Padding(5);
+            .Padding(4);
     }
 
     private static IContainer Cell(IContainer container)
@@ -312,7 +408,21 @@ public sealed class AdminStatisticsPdfGenerator : IAdminStatisticsPdfGenerator
         return container
             .Border(1)
             .BorderColor(Colors.Grey.Lighten1)
-            .Padding(5);
+            .Padding(4);
+    }
+
+    private static string GetAppointmentStatusName(AppointmentStatusStatisticsDto item)
+    {
+        return !string.IsNullOrWhiteSpace(item.StatusDisplayName)
+            ? item.StatusDisplayName
+            : item.Status;
+    }
+
+    private static string GetReportStatusName(ReportStatusStatisticsDto item)
+    {
+        return !string.IsNullOrWhiteSpace(item.StatusDisplayName)
+            ? item.StatusDisplayName
+            : item.Status;
     }
 
     private static string FormatDate(DateTime date)
