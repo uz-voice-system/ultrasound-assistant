@@ -7,5 +7,6 @@
   <Project Path="src/UltrasoundAssistant.Contracts/UltrasoundAssistant.Contracts.csproj" Id="38cd3027-612b-4136-b637-f764973cd2d6" />
   <Project Path="src/UltrasoundAssistant.ProjectionService/UltrasoundAssistant.ProjectionService.csproj" Id="80d23159-cb61-4648-a904-794060bd108d" />
   <Project Path="src/UltrasoundAssistant.ReportGenerator/UltrasoundAssistant.ReportGenerator.csproj" Id="66f315fa-4561-4477-95dc-0d09abdf0526" />
+  <Project Path="src/UltrasoundAssistant.Tests/UltrasoundAssistant.Tests.csproj" />
   <Project Path="src/UltrasoundAssistant.VoiceProcessingService/UltrasoundAssistant.VoiceProcessingService.csproj" Id="6a9c29c0-cd13-47d5-a99e-1d426fcea54d" />
 </Solution>
